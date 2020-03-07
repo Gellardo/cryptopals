@@ -14,6 +14,18 @@ pub fn xor_single_byte(plain: Vec<u8>, key: u8) -> Vec<u8> {
     xor(plain, keystream)
 }
 
+// DECRYPT
+pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
+    let mut possible_best: Vec<(Score, u8, Vec<u8>)> = Vec::new();
+    for key in 0..=255u8 {
+        let guess = xor_single_byte(cipher.clone(), key);
+        let rating = rate_plain(&guess);
+        possible_best.push((rating, key, guess));
+    }
+    // reverse sorting
+    possible_best.sort_by_key(|t| { -t.0 });
+    possible_best.get(..3).unwrap().to_vec()
+}
 
 // SCORING
 pub type Score = i32;
