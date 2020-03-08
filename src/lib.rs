@@ -23,6 +23,7 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
 }
 
 // DECRYPT
+/// decrypt single byte xor and return the best 3 results
 pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
     let mut possible_best: Vec<(Score, u8, Vec<u8>)> = Vec::new();
     for key in 0..=255u8 {
@@ -35,7 +36,22 @@ pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
     possible_best.get(..3).unwrap().to_vec()
 }
 
-// SCORING
+pub fn decrypt_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
+    // for keysize in 1..40
+    // hemming_dist(cipher[0:keysize], cipher[keysize, 2*keysize]) / keysize
+    // use the one (2-3) with the smallest distance
+    // break every place of the key individually, putting the best together afterwards
+    decrypt_xor_repeating_key_size(cipher, 1)
+}
+
+/// decrypt repeating key xor with a known keysize and return the best 3 results
+pub fn decrypt_xor_repeating_key_size(cipher: Vec<u8>, keysize: usize) -> Vec<(Score, u8, Vec<u8>)> {
+    // split into single xor texts using only every keysize_th character
+    // combine best single byte keys
+    Vec::new()
+}
+
+// UTIL
 pub type Score = i32;
 
 /// Rate a clear text for how good it fits an english text
@@ -91,4 +107,18 @@ fn _compare_letter_frequency() {
         ('q', 0.095),
         ('z', 0.077),
     ];
+}
+
+fn hamming_distance(s1: Vec<u8>, s2: Vec<u8>) -> u32 {
+    s1.iter().zip(s2).map(|(c1, c2)| (c1 ^ c2).count_ones()).sum()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hemming_distance() {
+        assert_eq!(hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()), 37);
+    }
 }
