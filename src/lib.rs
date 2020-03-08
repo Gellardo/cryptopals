@@ -14,6 +14,14 @@ pub fn xor_single_byte(plain: Vec<u8>, key: u8) -> Vec<u8> {
     xor(plain, keystream)
 }
 
+pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
+    let mut keystream = Vec::with_capacity(plain.len());
+    for i in 0..plain.len() {
+        keystream.push(key[i % key.len()]);
+    }
+    xor(plain, keystream)
+}
+
 // DECRYPT
 pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
     let mut possible_best: Vec<(Score, u8, Vec<u8>)> = Vec::new();
