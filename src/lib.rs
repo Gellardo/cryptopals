@@ -31,15 +31,22 @@ pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
 pub type Score = i32;
 
 /// Rate a clear text for how good it fits an english text
+///
+/// any chars, spaces and punctuation indicates at least the plaintext resembles something readable
+/// punish unrecognized characters
 pub fn rate_plain(s: &Vec<u8>) -> Score {
-    let mut res = 0;
+    let mut res: Score = 0;
     for c in s {
-        if *c >= 'a' as u8 && *c <= 'z' as u8 {
+        if *c >= 'a' as u8 && *c <= 'z' as u8 { // most text is lowercase
+            res += 7;
+        } else if *c == ' ' as u8 || *c >= 'A' as u8 && *c <= 'Z' as u8 { // a lot of spaces and uppercase
             res += 5;
-        } else if *c >= 'A' as u8 && *c <= 'Z' as u8 {
-            res += 5;
+        } else if *c == '\'' as u8 || *c == '\n' as u8 || *c == '.' as u8 { // few special chars
+            res += 2;
         } else if (*c as char).is_whitespace() {
             res += 1;
+        } else {
+            res -= 10;
         }
     }
     res
@@ -49,31 +56,31 @@ pub fn rate_plain(s: &Vec<u8>) -> Score {
 fn _compare_letter_frequency() {
     let _letter_frequency = vec![
         // from wikipedia
-        ('e',12.702),
-        ('t',9.356),
-        ('a',8.167),
-        ('o',7.507),
-        ('i',6.966),
-        ('n',6.749),
-        ('s',6.327),
-        ('h',6.094),
-        ('r',5.987),
-        ('d',4.253),
-        ('l',4.025),
-        ('u',2.758),
-        ('w',2.560),
-        ('m',2.406),
-        ('c',2.202),
-        ('f',2.228),
-        ('g',2.015),
-        ('y',1.994),
-        ('p',1.929),
-        ('b',1.492),
-        ('k',1.292),
-        ('v',0.978),
-        ('j',0.153),
-        ('x',0.150),
-        ('q',0.095),
-        ('z',0.077),
+        ('e', 12.702),
+        ('t', 9.356),
+        ('a', 8.167),
+        ('o', 7.507),
+        ('i', 6.966),
+        ('n', 6.749),
+        ('s', 6.327),
+        ('h', 6.094),
+        ('r', 5.987),
+        ('d', 4.253),
+        ('l', 4.025),
+        ('u', 2.758),
+        ('w', 2.560),
+        ('m', 2.406),
+        ('c', 2.202),
+        ('f', 2.228),
+        ('g', 2.015),
+        ('y', 1.994),
+        ('p', 1.929),
+        ('b', 1.492),
+        ('k', 1.292),
+        ('v', 0.978),
+        ('j', 0.153),
+        ('x', 0.150),
+        ('q', 0.095),
+        ('z', 0.077),
     ];
 }
