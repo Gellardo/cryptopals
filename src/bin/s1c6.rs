@@ -7,7 +7,9 @@ fn main() {
     let line = fs::read_to_string("./files/break_repeating_key_xor.txt").unwrap();
     let cipher = base64::decode(&line.replace("\n", "")).unwrap();
 
-    let plain = decrypt_xor_repeating_key(cipher);
+    let options = decrypt_xor_repeating_key(cipher);
 
-    println!("{:?}", plain);
+    for (score, key, plain) in options {
+        println!("{}:{}, {:?}: {:?}", score, key.len(), String::from_utf8(key), String::from_utf8(plain))
+    }
 }

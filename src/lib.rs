@@ -36,19 +36,44 @@ pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
     possible_best.get(..3).unwrap().to_vec()
 }
 
-pub fn decrypt_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
-    // for keysize in 1..40
-    // hemming_dist(cipher[0:keysize], cipher[keysize, 2*keysize]) / keysize
-    // use the one (2-3) with the smallest distance
-    // break every place of the key individually, putting the best together afterwards
-    decrypt_xor_repeating_key_size(cipher, 1)
+pub fn decrypt_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
+    // guess the keysize
+    // if we have the right keysize, each compared byte pair hd(c1,c2) = hd(p1^k^p2^k) = hd(p1^p2)
+    // This code therefore assumes that the difference between plaintext bytes is smaller than all other combinations.
+    let mut normalized = Vec::new();
+    for keysize in 1..40 {
+        let d = hamming_distance(cipher[0..keysize].to_vec(), cipher[keysize..2 * keysize].to_vec());
+        normalized.push((d as f32 / keysize as f32, keysize));
+    }
+    normalized.sort_by(|t1, t2| t1.0.partial_cmp(&t2.0).unwrap());
+    println!("{:?}", normalized);
+
+    let mut possible_decryptions = Vec::new();
+    for (_, keysize) in normalized {
+        possible_decryptions.extend(decrypt_xor_repeating_key_size(&cipher, keysize));
+    }
+    possible_decryptions.sort_by_key(|t| -t.0);
+    possible_decryptions
 }
 
 /// decrypt repeating key xor with a known keysize and return the best 3 results
-pub fn decrypt_xor_repeating_key_size(cipher: Vec<u8>, keysize: usize) -> Vec<(Score, u8, Vec<u8>)> {
-    // split into single xor texts using only every keysize_th character
-    // combine best single byte keys
-    Vec::new()
+pub fn decrypt_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
+    let mut best_key = Vec::new();
+    for i in 0..keysize {
+        let mut ciphertext_i = Vec::new();
+        for j in 0..cipher.len() {
+            if j % keysize == i {
+                ciphertext_i.push(cipher[j]);
+            }
+        }
+        let options = decrypt_xor_single_byte(ciphertext_i);
+        best_key.push(options[0].clone());
+    }
+    println!("best key: {:?}", best_key);
+    let key: Vec<u8> = best_key.iter().map(|t| t.1).collect();
+    println!("best key: {:?}", key);
+    let plain = xor_repeating_key(cipher.clone(), key.clone());
+    vec![(rate_plain(&plain), key, plain)]
 }
 
 // UTIL
@@ -110,6 +135,7 @@ fn _compare_letter_frequency() {
 }
 
 fn hamming_distance(s1: Vec<u8>, s2: Vec<u8>) -> u32 {
+    assert_eq!(s1.len(), s2.len());
     s1.iter().zip(s2).map(|(c1, c2)| (c1 ^ c2).count_ones()).sum()
 }
 
@@ -118,7 +144,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hemming_distance() {
+    fn hamming_distance() {
         assert_eq!(hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()), 37);
     }
 }
