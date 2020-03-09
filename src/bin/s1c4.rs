@@ -1,6 +1,6 @@
 use std::fs;
 
-use cyptopals::decrypt_xor_single_byte;
+use cyptopals::break_xor_single_byte;
 
 /// Find the ciphertext that is probably encrypted with single byte xor
 fn main() {
@@ -12,7 +12,7 @@ fn main() {
         .collect();
     let mut best_decryptions = Vec::new();
     for cipher in lines {
-        let possible_best = decrypt_xor_single_byte(cipher);
+        let possible_best = break_xor_single_byte(cipher);
         best_decryptions.push(possible_best.first().unwrap().clone());
     }
     best_decryptions.sort_by_key(|t| -t.0);

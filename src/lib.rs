@@ -23,8 +23,8 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
 }
 
 // DECRYPT
-/// decrypt single byte xor and return the best 3 results
-pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
+/// Break single byte xor and return the best 3 results
+pub fn break_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
     let mut possible_best: Vec<(Score, u8, Vec<u8>)> = Vec::new();
     for key in 0..=255u8 {
         let guess = xor_single_byte(cipher.clone(), key);
@@ -36,8 +36,8 @@ pub fn decrypt_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
     possible_best.get(..3).unwrap().to_vec()
 }
 
-/// Detect keylength and then decrypt a cipher text using repeating key xor
-pub fn decrypt_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
+/// Detect keylength and then break a cipher text using repeating key xor
+pub fn break_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
     // 1. guess the keysize
     // if we have the right keysize, each compared byte pair hd(c1,c2) = hd(p1^k^p2^k) = hd(p1^p2)
     // This code therefore assumes that the difference between plaintext bytes is smaller than all other combinations.
@@ -56,14 +56,14 @@ pub fn decrypt_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, Vec<u8>, Vec<u8
     // 2. decrypt with the best X keylengths
     let mut possible_decryptions = Vec::new();
     for (_, keysize) in normalized.get(0..3).unwrap() {
-        possible_decryptions.extend(decrypt_xor_repeating_key_size(&cipher, *keysize));
+        possible_decryptions.extend(break_xor_repeating_key_size(&cipher, *keysize));
     }
     possible_decryptions.sort_by_key(|t| -t.0);
     possible_decryptions
 }
 
-/// decrypt repeating key xor with a known keysize and return the best result
-pub fn decrypt_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
+/// Break repeating key xor with a known keysize and return the best result
+pub fn break_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
     let mut best_key = Vec::new();
     for i in 0..keysize {
         let mut ciphertext_i = Vec::new();
@@ -72,7 +72,7 @@ pub fn decrypt_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(
                 ciphertext_i.push(cipher[j]);
             }
         }
-        let options = decrypt_xor_single_byte(ciphertext_i);
+        let options = break_xor_single_byte(ciphertext_i);
         best_key.push(options[0].clone());
     }
     let key: Vec<u8> = best_key.iter().map(|t| t.1).collect();
