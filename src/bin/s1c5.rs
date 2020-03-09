@@ -2,7 +2,7 @@ use std::fs;
 
 use cyptopals::xor_repeating_key;
 
-/// Find the ciphertext that is probably encrypted with single byte xor
+/// Implement repeating key xor
 fn main() {
     let plain = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_vec();
     let key = b"ICE".to_vec();

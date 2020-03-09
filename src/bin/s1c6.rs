@@ -2,7 +2,7 @@ use std::fs;
 
 use cyptopals::break_xor_repeating_key;
 
-/// Find the ciphertext that is probably encrypted with single byte xor
+/// Break the ciphertext using repeated key xor encryption
 fn main() {
     let line = fs::read_to_string("./files/break_repeating_key_xor.txt").unwrap();
     let cipher = base64::decode(&line.replace("\n", "")).unwrap();
