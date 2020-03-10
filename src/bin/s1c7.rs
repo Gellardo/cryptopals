@@ -1,9 +1,10 @@
 extern crate crypto;
-use std::fs;
-use crypto::{aes, buffer, blockmodes};
 
+use std::fs;
+
+use crypto::{aes, blockmodes, buffer};
 use crypto::aes::KeySize::KeySize128;
-use crypto::buffer::{WriteBuffer, ReadBuffer, BufferResult};
+use crypto::buffer::{BufferResult, ReadBuffer, WriteBuffer};
 
 /// Decrypt AES ECB
 ///
@@ -26,7 +27,7 @@ fn main() {
         final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().map(|&i| i));
         match result {
             BufferResult::BufferUnderflow => break,
-            BufferResult::BufferOverflow => { }
+            BufferResult::BufferOverflow => {}
         }
     }
 

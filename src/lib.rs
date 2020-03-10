@@ -67,10 +67,8 @@ pub fn break_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Sc
     let mut best_key = Vec::new();
     for i in 0..keysize {
         let mut ciphertext_i = Vec::new();
-        for j in 0..cipher.len() {
-            if j % keysize == i {
-                ciphertext_i.push(cipher[j]);
-            }
+        for j in (i..cipher.len()).step_by(keysize){
+            ciphertext_i.push(cipher[j])
         }
         let options = break_xor_single_byte(ciphertext_i);
         best_key.push(options[0].clone());
