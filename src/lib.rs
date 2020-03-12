@@ -67,7 +67,7 @@ pub fn break_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Sc
     let mut best_key = Vec::new();
     for i in 0..keysize {
         let mut ciphertext_i = Vec::new();
-        for j in (i..cipher.len()).step_by(keysize){
+        for j in (i..cipher.len()).step_by(keysize) {
             ciphertext_i.push(cipher[j])
         }
         let options = break_xor_single_byte(ciphertext_i);
@@ -101,6 +101,16 @@ pub fn rate_plain(s: &Vec<u8>) -> Score {
         }
     }
     res
+}
+
+pub fn pad_pkcs7(mut block: Vec<u8>, blocksize: u8) -> Vec<u8> {
+    let missing_bytes = (blocksize - (block.len() % blocksize as usize) as u8);
+    if missing_bytes != 0 {
+        for i in 0..missing_bytes {
+            block.push(missing_bytes)
+        }
+    }
+    block
 }
 
 /// perhaps i am going to use it some time in the future
@@ -146,7 +156,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hamming_distance() {
+    fn hamming_dist() {
         assert_eq!(hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()), 37);
+    }
+
+    #[test]
+    fn pkcs7() {
+        let mut test = b"YELLOW SUBMARINE".to_vec();
+        test = pad_pkcs7(test, 20);
+        assert_eq!(test, b"YELLOW SUBMARINE\x04\x04\x04\x04".to_vec());
     }
 }
