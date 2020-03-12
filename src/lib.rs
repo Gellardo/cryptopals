@@ -25,6 +25,30 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
     xor(plain, keystream)
 }
 
+pub fn aes_ecb_encrypt(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
+    assert!(plain.len() % 16 == 0 && key.len() == 16);
+    let aes_enc = aessafe::AesSafe128Encryptor::new(b"YELLOW SUBMARINE");
+    let mut cipher = Vec::new();
+    for i in (0..plain.len()).step_by(16) {
+        let mut out = [0; 16];
+        aes_enc.encrypt_block(&plain[i..i + 16], &mut out);
+        cipher.extend_from_slice(out.as_ref());
+    }
+    cipher
+}
+
+pub fn aes_ecb_decrypt(cipher: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
+    assert!(cipher.len() % 16 == 0 && key.len() == 16);
+    let aes_dec = aessafe::AesSafe128Decryptor::new(b"YELLOW SUBMARINE");
+    let mut plain = Vec::new();
+    for i in (0..cipher.len()).step_by(16) {
+        let mut out = [0; 16];
+        aes_dec.decrypt_block(&cipher[i..i + 16], &mut out);
+        plain.extend_from_slice(out.as_ref());
+    }
+    plain
+}
+
 pub fn aes_cbc_encrypt(plain: Vec<u8>, key: Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
     assert!(plain.len() % 16 == 0 && key.len() == 16 && iv.len() == 16);
     let aes_enc = aessafe::AesSafe128Encryptor::new(b"YELLOW SUBMARINE");
@@ -195,6 +219,19 @@ mod tests {
     #[test]
     fn hamming_dist() {
         assert_eq!(hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()), 37);
+    }
+
+    #[test]
+    fn aes_ecb() {
+        let plain = b"YELLOW SUBMARINEYELLOW SUBMARINE".to_vec();
+        let key = b"YELLOW SUBMARINE".to_vec();
+        let cipher = aes_ecb_encrypt(plain.clone(), key.clone());
+        assert_eq!(
+            cipher,
+            hex::decode("d1aa4f6578926542fbb6dd876cd20508d1aa4f6578926542fbb6dd876cd20508").unwrap(),
+            "cipher"
+        );
+        assert_eq!(aes_ecb_decrypt(cipher, key), plain, "plain");
     }
 
     #[test]
