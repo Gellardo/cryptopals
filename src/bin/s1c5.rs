@@ -1,5 +1,3 @@
-use std::fs;
-
 use cyptopals::xor_repeating_key;
 
 /// Implement repeating key xor

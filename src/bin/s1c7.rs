@@ -2,9 +2,9 @@ extern crate crypto;
 
 use std::fs;
 
-use crypto::{aes, blockmodes, buffer};
-use crypto::aes::KeySize::KeySize128;
-use crypto::buffer::{BufferResult, ReadBuffer, WriteBuffer};
+use crypto::aessafe;
+use crypto::aessafe::AesSafe128Decryptor;
+use crypto::symmetriccipher::BlockDecryptor;
 
 /// Decrypt AES ECB
 ///
@@ -14,22 +14,13 @@ fn main() {
     let line = fs::read_to_string("./files/aes_ecb.txt").unwrap();
     let cipher = base64::decode(&line.replace("\n", "")).unwrap();
 
-//    let plain = aes_ecb(cipher, "YELLOW SUBMARINE");
-    let mut decryptor = aes::ecb_decryptor(KeySize128, b"YELLOW SUBMARINE", blockmodes::PkcsPadding);
+    let aes_dec: AesSafe128Decryptor = aessafe::AesSafe128Decryptor::new(b"YELLOW SUBMARINE");
 
-    let mut final_result = Vec::<u8>::new();
-    let mut read_buffer = buffer::RefReadBuffer::new(cipher.as_slice());
-    let mut buffer = [0; 4096];
-    let mut write_buffer = buffer::RefWriteBuffer::new(&mut buffer);
-
-    loop {
-        let result = decryptor.decrypt(&mut read_buffer, &mut write_buffer, true).unwrap();
-        final_result.extend(write_buffer.take_read_buffer().take_remaining().iter().map(|&i| i));
-        match result {
-            BufferResult::BufferUnderflow => break,
-            BufferResult::BufferOverflow => {}
-        }
+    let mut output = Vec::new();
+    for i in (0..cipher.len()).step_by(16) {
+        let mut out = [0; 16];
+        aes_dec.decrypt_block(cipher[i..i + 16].as_ref(), &mut out);
+        output.extend_from_slice(&out);
     }
-
-    println!("{:?}", String::from_utf8(final_result))
+    println!("{}", String::from_utf8(output.to_vec()).unwrap());
 }

@@ -103,10 +103,15 @@ pub fn rate_plain(s: &Vec<u8>) -> Score {
     res
 }
 
+/// Pad block using the pkcs#7 padding
+/// ```
+/// use cyptopals::pad_pkcs7;
+/// assert_eq!(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 20), b"YELLOW SUBMARINE\x04\x04\x04\x04".to_vec());
+/// ```
 pub fn pad_pkcs7(mut block: Vec<u8>, blocksize: u8) -> Vec<u8> {
-    let missing_bytes = (blocksize - (block.len() % blocksize as usize) as u8);
+    let missing_bytes = blocksize - (block.len() % blocksize as usize) as u8;
     if missing_bytes != 0 {
-        for i in 0..missing_bytes {
+        for _ in 0..missing_bytes {
             block.push(missing_bytes)
         }
     }
@@ -158,12 +163,5 @@ mod tests {
     #[test]
     fn hamming_dist() {
         assert_eq!(hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()), 37);
-    }
-
-    #[test]
-    fn pkcs7() {
-        let mut test = b"YELLOW SUBMARINE".to_vec();
-        test = pad_pkcs7(test, 20);
-        assert_eq!(test, b"YELLOW SUBMARINE\x04\x04\x04\x04".to_vec());
     }
 }
