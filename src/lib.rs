@@ -212,6 +212,14 @@ fn hamming_distance(s1: Vec<u8>, s2: Vec<u8>) -> u32 {
     s1.iter().zip(s2).map(|(c1, c2)| (c1 ^ c2).count_ones()).sum()
 }
 
+pub fn random_128_bit() -> Vec<u8> {
+    let mut vec = Vec::new();
+    for _ in 0..16 {
+        vec.push(rand::random());
+    }
+    vec
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
