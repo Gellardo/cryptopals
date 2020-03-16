@@ -1,6 +1,8 @@
 extern crate base64;
 extern crate hex;
 
+use std::collections::HashSet;
+
 use crypto::aessafe;
 use crypto::symmetriccipher::{BlockDecryptor, BlockEncryptor};
 
@@ -25,9 +27,9 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
     xor(plain, keystream)
 }
 
-pub fn aes_ecb_encrypt(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
+pub fn aes_ecb_encrypt(plain: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     assert!(plain.len() % 16 == 0 && key.len() == 16);
-    let aes_enc = aessafe::AesSafe128Encryptor::new(b"YELLOW SUBMARINE");
+    let aes_enc = aessafe::AesSafe128Encryptor::new(key);
     let mut cipher = Vec::new();
     for i in (0..plain.len()).step_by(16) {
         let mut out = [0; 16];
@@ -37,9 +39,9 @@ pub fn aes_ecb_encrypt(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
     cipher
 }
 
-pub fn aes_ecb_decrypt(cipher: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
+pub fn aes_ecb_decrypt(cipher: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     assert!(cipher.len() % 16 == 0 && key.len() == 16);
-    let aes_dec = aessafe::AesSafe128Decryptor::new(b"YELLOW SUBMARINE");
+    let aes_dec = aessafe::AesSafe128Decryptor::new(key);
     let mut plain = Vec::new();
     for i in (0..cipher.len()).step_by(16) {
         let mut out = [0; 16];
@@ -49,9 +51,9 @@ pub fn aes_ecb_decrypt(cipher: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
     plain
 }
 
-pub fn aes_cbc_encrypt(plain: Vec<u8>, key: Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
+pub fn aes_cbc_encrypt(plain: Vec<u8>, key: &Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
     assert!(plain.len() % 16 == 0 && key.len() == 16 && iv.len() == 16);
-    let aes_enc = aessafe::AesSafe128Encryptor::new(b"YELLOW SUBMARINE");
+    let aes_enc = aessafe::AesSafe128Encryptor::new(key);
     let mut cipher = Vec::new();
     let mut prev_cipher_block = iv;
     for i in (0..plain.len()).step_by(16) {
@@ -64,9 +66,9 @@ pub fn aes_cbc_encrypt(plain: Vec<u8>, key: Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
     cipher
 }
 
-pub fn aes_cbc_decrypt(cipher: Vec<u8>, key: Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
+pub fn aes_cbc_decrypt(cipher: Vec<u8>, key: &Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
     assert!(cipher.len() % 16 == 0 && key.len() == 16 && iv.len() == 16);
-    let aes_dec = aessafe::AesSafe128Decryptor::new(b"YELLOW SUBMARINE");
+    let aes_dec = aessafe::AesSafe128Decryptor::new(key);
     let mut plain = Vec::new();
     let mut prev_cipher_block = iv;
     for i in (0..cipher.len()).step_by(16) {
@@ -219,6 +221,38 @@ pub fn random_128_bit() -> Vec<u8> {
     }
     vec
 }
+
+/// Tries progressively longer plain texts, until there is a new block added.
+/// The difference between the previous and the new length is the blocksize.
+/// Maximum blocksize detected is 64 bytes.
+pub fn detect_blocksize(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>) -> Option<usize> {
+    let l0 = blackbox(vec![0]).len();
+    for i in 0..64 {
+        let vec1 = vec![0; i + 1];
+        let l1 = blackbox(vec1).len();
+        if l1 > l0 {
+            return Some(l1 - l0);
+        }
+    }
+    None
+}
+
+pub fn detect_ecb(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>, blocksize: usize) -> bool {
+    let cipher = blackbox(vec![0; 3 * blocksize]);
+    let mut blocks = HashSet::new();
+    for i in (0..cipher.len()).step_by(16) {
+        let block = cipher.get(i..i + 16);
+        match block {
+            Some(b) => {
+                if blocks.contains(&b) { return true; };
+                blocks.insert(b);
+            }
+            None => {}
+        }
+    }
+    false
+}
+
 
 #[cfg(test)]
 mod tests {

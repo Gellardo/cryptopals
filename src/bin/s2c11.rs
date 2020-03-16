@@ -1,22 +1,19 @@
 extern crate rand;
 
-
-use std::collections::HashSet;
-
 use rand::{Rng, thread_rng};
 use rand::distributions::Standard;
 
-use cyptopals::{aes_cbc_encrypt, aes_ecb_encrypt, pad_pkcs7, random_128_bit};
+use cyptopals::{aes_cbc_encrypt, aes_ecb_encrypt, detect_ecb, pad_pkcs7, random_128_bit};
 
 use crate::Encryption::{CBC, ECB};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum Encryption {
     ECB,
     CBC,
 }
 
-fn encryption_oracle(plain: Vec<u8>) -> (Vec<u8>, Encryption) {
+fn encryption_oracle(plain: Vec<u8>, enc: Encryption) -> Vec<u8> {
     let mut rng = thread_rng();
     let key = random_128_bit();
     let iv = random_128_bit();
@@ -25,30 +22,10 @@ fn encryption_oracle(plain: Vec<u8>) -> (Vec<u8>, Encryption) {
     plain_ext.extend(plain);
     plain_ext.extend(rng.sample_iter(Standard).take(rng.gen_range(5, 10)).collect::<Vec<u8>>());
 
-    if rng.gen() {
-        (aes_cbc_encrypt(pad_pkcs7(plain_ext, 16), key, iv), CBC)
+    if enc == CBC {
+        aes_cbc_encrypt(pad_pkcs7(plain_ext, 16), &key, iv)
     } else {
-        (aes_ecb_encrypt(pad_pkcs7(plain_ext, 16), key), ECB)
-    }
-}
-
-fn detect_ecb_or_cbc(cipher: &Vec<u8>) -> Encryption {
-    let mut score = 0;
-    let mut blocks = HashSet::new();
-    for i in (0..cipher.len()).step_by(16) {
-        let block = cipher.get(i..i + 16);
-        match block {
-            Some(b) => {
-                score += if blocks.contains(&b) { 1 } else { 0 };
-                blocks.insert(b);
-            }
-            None => {}
-        }
-    }
-    if score > 0 {
-        ECB
-    } else {
-        CBC
+        aes_ecb_encrypt(pad_pkcs7(plain_ext, 16), &key)
     }
 }
 
@@ -61,10 +38,11 @@ fn detect_ecb_or_cbc(cipher: &Vec<u8>) -> Encryption {
 fn main() {
     let iterations = 10000;
     let mut correct = 0;
-    let malicious_payload = vec![0; 64];
     for _ in 0..iterations {
-        let (cipher, enc) = encryption_oracle(malicious_payload.clone());
-        if detect_ecb_or_cbc(&cipher) == enc {
+        let enc = if rand::random() { ECB } else { CBC };
+        let mut blackbox = |plain| { encryption_oracle(plain, enc) };
+        let is_ecb = detect_ecb(&mut blackbox, 16);
+        if enc == ECB && is_ecb || enc == CBC && !is_ecb {
             correct += 1;
         }
     }

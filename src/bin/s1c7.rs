@@ -12,6 +12,6 @@ fn main() {
     let line = fs::read_to_string("./files/aes_ecb.txt").unwrap();
     let cipher = base64::decode(&line.replace("\n", "")).unwrap();
 
-    let output = aes_ecb_decrypt(cipher, b"YELLOW SUBMARINE".to_vec());
+    let output = aes_ecb_decrypt(cipher, b"YELLOW SUBMARINE".to_vec().as_ref());
     println!("{}", String::from_utf8(output.to_vec()).unwrap());
 }
