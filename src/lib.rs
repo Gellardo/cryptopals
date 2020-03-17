@@ -222,6 +222,21 @@ pub fn random_128_bit() -> Vec<u8> {
     vec
 }
 
+/// Same as a == b with a logline why the comparison failed
+pub fn compare(a: &Vec<u8>, b: &Vec<u8>) -> bool {
+    for i in 0..a.len() {
+        if a.get(i) != b.get(i) {
+            println!("mismatch @{}: {:?} != {:?}", i, a.get(i), b.get(i));
+            return false;
+        }
+    }
+    if a.len() < b.len(){
+        println!("missmatch length: a ({}) shorter than b ({})", a.len(), b.len())
+    }
+    a.len() == b.len()
+}
+
+
 /// Tries progressively longer plain texts, until there is a new block added.
 /// The difference between the previous and the new length is the blocksize.
 /// Maximum blocksize detected is 64 bytes.
@@ -267,13 +282,13 @@ mod tests {
     fn aes_ecb() {
         let plain = b"YELLOW SUBMARINEYELLOW SUBMARINE".to_vec();
         let key = b"YELLOW SUBMARINE".to_vec();
-        let cipher = aes_ecb_encrypt(plain.clone(), key.clone());
+        let cipher = aes_ecb_encrypt(plain.clone(), &key);
         assert_eq!(
             cipher,
             hex::decode("d1aa4f6578926542fbb6dd876cd20508d1aa4f6578926542fbb6dd876cd20508").unwrap(),
             "cipher"
         );
-        assert_eq!(aes_ecb_decrypt(cipher, key), plain, "plain");
+        assert_eq!(aes_ecb_decrypt(cipher, &key), plain, "plain");
     }
 
     #[test]
@@ -281,14 +296,14 @@ mod tests {
         let plain = b"YELLOW SUBMARINEYELLOW SUBMARINE".to_vec();
         let key = b"YELLOW SUBMARINE".to_vec();
         let iv = hex::decode("00000000000000000000000000000000").unwrap();
-        let cipher = aes_cbc_encrypt(plain.clone(), key.clone(), iv.clone());
+        let cipher = aes_cbc_encrypt(plain.clone(), &key, iv.clone());
         assert_eq!(
             cipher,
             hex::decode("d1aa4f6578926542fbb6dd876cd20508eaed974f65b7a3a9240d36daef1a31ea").unwrap(),
             "cipher"
         );
         assert_eq!(
-            aes_cbc_decrypt(cipher, key.clone(), iv),
+            aes_cbc_decrypt(cipher, &key, iv),
             plain,
             "plain"
         );
