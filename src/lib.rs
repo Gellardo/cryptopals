@@ -165,6 +165,7 @@ pub fn rate_plain(s: &Vec<u8>) -> Score {
 /// ```
 /// use cyptopals::pad_pkcs7;
 /// assert_eq!(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 20), b"YELLOW SUBMARINE\x04\x04\x04\x04".to_vec());
+/// assert_eq!(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 16), b"YELLOW SUBMARINE\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10".to_vec());
 /// ```
 pub fn pad_pkcs7(mut block: Vec<u8>, blocksize: u8) -> Vec<u8> {
     let missing_bytes = blocksize - (block.len() % blocksize as usize) as u8;
@@ -172,6 +173,20 @@ pub fn pad_pkcs7(mut block: Vec<u8>, blocksize: u8) -> Vec<u8> {
         for _ in 0..missing_bytes {
             block.push(missing_bytes)
         }
+    }
+    block
+}
+
+/// Unpad block using the pkcs#7 padding
+/// ```
+/// use cyptopals::{pad_pkcs7,unpad_pkcs7};
+/// assert_eq!(unpad_pkcs7(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 20)), b"YELLOW SUBMARINE".to_vec());
+/// assert_eq!(unpad_pkcs7(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 16)), b"YELLOW SUBMARINE".to_vec());
+/// ```
+pub fn unpad_pkcs7(mut block: Vec<u8>) -> Vec<u8> {
+    let to_remove = block.last().unwrap();
+    for _ in 0..*to_remove {
+        block.pop();
     }
     block
 }
@@ -230,7 +245,7 @@ pub fn compare(a: &Vec<u8>, b: &Vec<u8>) -> bool {
             return false;
         }
     }
-    if a.len() < b.len(){
+    if a.len() < b.len() {
         println!("missmatch length: a ({}) shorter than b ({})", a.len(), b.len())
     }
     a.len() == b.len()
