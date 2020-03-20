@@ -12,7 +12,7 @@ fn encrypt(email: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
 }
 
 fn decrypt(cipher: Vec<u8>, key: &Vec<u8>) -> String {
-    String::from_utf8(unpad_pkcs7(aes_ecb_decrypt(cipher, key))).unwrap()
+    String::from_utf8(unpad_pkcs7(aes_ecb_decrypt(cipher, key)).unwrap()).unwrap()
 }
 
 /// Cut&paste with ECB
