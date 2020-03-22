@@ -58,16 +58,16 @@ fn cbc_padding_oracle(oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_
 //        println!("padding {:?}", expected_padding);
 
         let mut prev = previous_block.clone();
-        let mut current_byte = prev.get(pos).unwrap().to_owned(); // to be bitflipped
+        let current_byte = prev.get(pos).unwrap().to_owned(); // to be bitflipped
         for known in pos + 1..blocksize {
             // need to do c ^ b so that p ^ b = padding => b = p ^ padding
-            // c-1 ^ b = p ^ b -> c ^ b = p ^ 2               2 = p ^ b  - > b = p ^ 2
             let prev_byte = *prev.get(known).unwrap();
             mem::swap(prev.get_mut(known).unwrap(), &mut (prev_byte ^ decrypted[known] ^ expected_padding));
         }
         let mut byte = None;
         for bitflip in 0..255u8 {
             mem::swap(prev.get_mut(pos).unwrap(), &mut (current_byte ^ bitflip));
+            // don't guess '1' without bitflips, since it could also be another valid padding
             if oracle(to_decrypt, &prev) && !(bitflip == 0 && bitflip ^ expected_padding == 1) {
                 byte = Some(bitflip ^ expected_padding);
 //                println!("with bitflip {:?}", bitflip);
@@ -76,7 +76,7 @@ fn cbc_padding_oracle(oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_
             }
         }
 //        println!("found byte {:?}", byte.unwrap() as char);
-        decrypted[pos] = byte.unwrap();
+        decrypted[pos] = byte.unwrap_or(1); // I excluded 1 earlier, but it can be a valid option
     }
 
 //    println!("{:?}", decrypted.clone());
@@ -84,19 +84,24 @@ fn cbc_padding_oracle(oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_
     decrypted
 }
 
-fn main() {
-    let (cipher, iv, mut oracle) = get_oracle();
-    println!("oracle works: {}", oracle(&cipher, &iv));
-
+fn cbc_padding_oracle_multi(cipher: &Vec<u8>, iv: &Vec<u8>, oracle: &mut Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) -> Vec<u8> {
     let mut decrypted = Vec::new();
-    decrypted.extend(cbc_padding_oracle(&mut oracle, &iv, &cipher[0..16].to_vec()));
+    decrypted.extend(cbc_padding_oracle(oracle, &iv, &cipher[0..16].to_vec()));
     for block in 1..(cipher.len() / 16) {
         decrypted.extend(
             cbc_padding_oracle(
-                &mut oracle,
+                oracle,
                 &cipher[(block - 1) * 16..block * 16].to_vec(),
                 &cipher[block * 16..(block + 1) * 16].to_vec())
         );
     }
+    decrypted
+}
+
+fn main() {
+    let (cipher, iv, mut oracle) = get_oracle();
+    println!("oracle works: {}", oracle(&cipher, &iv));
+
+    let decrypted = cbc_padding_oracle_multi(&cipher, &iv, &mut oracle);
     println!("{:?}", String::from_utf8(unpad_pkcs7(decrypted.clone()).unwrap()));
 }
