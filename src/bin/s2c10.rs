@@ -10,7 +10,7 @@ fn main() {
     let cipher = base64::decode(&line.replace("\n", "")).unwrap();
 
     let plain = aes_cbc_decrypt(
-        cipher.clone(),
+        &cipher.clone(),
         b"YELLOW SUBMARINE".to_vec().as_ref(),
         &b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".to_vec());
 

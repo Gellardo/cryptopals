@@ -20,7 +20,7 @@ extern crate rand;
 
 use cyptopals::{aes_cbc_decrypt, aes_cbc_encrypt, pad_pkcs7, random_128_bit, unpad_pkcs7, xor};
 
-fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(Vec<u8>, Vec<u8>) -> bool>) {
+fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) {
     let options = vec![
         base64::decode("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc="),
         base64::decode("MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic="),
@@ -33,14 +33,22 @@ fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(Vec<u8>, Vec<u8>) -> bool>) {
         base64::decode("MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g="),
         base64::decode("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"),
     ];
-    let plain = options.get(0).unwrap().to_owned().unwrap();
+    let plain = options.get(rand::random::<usize>() % options.len()).unwrap().to_owned().unwrap();
+    println!("plain: {:?}", String::from_utf8(plain.clone()));
     let key = random_128_bit();
     let iv = random_128_bit();
-    let cipher = aes_cbc_encrypt(pad_pkcs7(plain, 16), &key, &iv);
-    (cipher, iv, Box::new(move |cipher, iv| unpad_pkcs7(aes_cbc_decrypt(cipher, &key, &iv)).is_ok()))
+    let cipher = aes_cbc_encrypt(&pad_pkcs7(plain, 16), &key, &iv);
+    (cipher, iv, Box::new(move |cipher, iv| unpad_pkcs7(aes_cbc_decrypt(&cipher, &key, iv)).is_ok()))
+}
+
+fn cbc_padding_oracle(blackbox: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_block: &Vec<u8>, to_decrypt: &Vec<u8>) -> Vec<u8> {
+
+    to_decrypt.clone()
 }
 
 fn main() {
-    let (cipher, iv, oracle) = get_oracle();
-    println!("oracle works: {}", oracle(cipher, iv));
+    let (cipher, iv, mut oracle) = get_oracle();
+    println!("oracle works: {}", oracle(&cipher, &iv));
+
+    cbc_padding_oracle( &mut oracle, &iv, &cipher[0..16].to_vec());
 }

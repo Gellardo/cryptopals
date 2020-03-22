@@ -8,7 +8,7 @@ fn main() {
     let key = random_128_bit();
     let mut encrypt_blackbox = |mut plain: Vec<u8>| {
         plain.extend_from_slice(secret_data.as_slice());
-        aes_ecb_encrypt(pad_pkcs7(plain, 16), &key)
+        aes_ecb_encrypt(&pad_pkcs7(plain, 16), &key)
     };
 
     let blocksize = detect_blocksize(&mut encrypt_blackbox).unwrap();

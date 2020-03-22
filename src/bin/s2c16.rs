@@ -51,11 +51,11 @@ fn encrypt(mut userdata: Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
     println!("prefix+user lenght: {}", plain.len());
     plain.extend(b";comment2=%20like%20a%20pound%20of%20bacon".to_vec());
     println!("prefix+user+suffix lenght: {}", plain.len());
-    aes_cbc_encrypt(pad_pkcs7(plain, 16), &key, &iv.to_owned())
+    aes_cbc_encrypt(&pad_pkcs7(plain, 16), &key, &iv.to_owned())
 }
 
 fn is_admin(cipher: Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> bool {
-    let decrypted = unpad_pkcs7(aes_cbc_decrypt(cipher, key, iv)).unwrap();
+    let decrypted = unpad_pkcs7(aes_cbc_decrypt(&cipher, key, iv)).unwrap();
     let ascii = String::from_iter(decrypted.iter().map(|b| *b as char));
     println!("decrypted: {:?}", ascii);
     ascii.contains(";admin=true;")

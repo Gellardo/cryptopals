@@ -58,7 +58,7 @@ fn main() {
         }
         plain_mod.extend(plain);
         plain_mod.extend_from_slice(secret_data.as_slice());
-        aes_ecb_encrypt(pad_pkcs7(plain_mod, 16), &key)
+        aes_ecb_encrypt(&pad_pkcs7(plain_mod, 16), &key)
     };
 
     let blocksize = detect_blocksize(&mut encrypt_blackbox).unwrap();

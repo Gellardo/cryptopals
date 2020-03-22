@@ -23,9 +23,9 @@ fn encryption_oracle(plain: Vec<u8>, enc: Encryption) -> Vec<u8> {
     plain_ext.extend(rng.sample_iter(Standard).take(rng.gen_range(5, 10)).collect::<Vec<u8>>());
 
     if enc == CBC {
-        aes_cbc_encrypt(pad_pkcs7(plain_ext, 16), &key, &iv)
+        aes_cbc_encrypt(&pad_pkcs7(plain_ext, 16), &key, &iv)
     } else {
-        aes_ecb_encrypt(pad_pkcs7(plain_ext, 16), &key)
+        aes_ecb_encrypt(&pad_pkcs7(plain_ext, 16), &key)
     }
 }
 

@@ -29,7 +29,7 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
     xor(plain, &keystream)
 }
 
-pub fn aes_ecb_encrypt(plain: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
+pub fn aes_ecb_encrypt(plain: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     assert!(plain.len() % 16 == 0 && key.len() == 16);
     let aes_enc = aessafe::AesSafe128Encryptor::new(key);
     let mut cipher = Vec::new();
@@ -41,7 +41,7 @@ pub fn aes_ecb_encrypt(plain: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     cipher
 }
 
-pub fn aes_ecb_decrypt(cipher: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
+pub fn aes_ecb_decrypt(cipher: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     assert!(cipher.len() % 16 == 0 && key.len() == 16);
     let aes_dec = aessafe::AesSafe128Decryptor::new(key);
     let mut plain = Vec::new();
@@ -53,7 +53,7 @@ pub fn aes_ecb_decrypt(cipher: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     plain
 }
 
-pub fn aes_cbc_encrypt(plain: Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
+pub fn aes_cbc_encrypt(plain: &Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
     assert!(plain.len() % 16 == 0 && key.len() == 16 && iv.len() == 16);
     let aes_enc = aessafe::AesSafe128Encryptor::new(key);
     let mut cipher = Vec::new();
@@ -70,7 +70,7 @@ pub fn aes_cbc_encrypt(plain: Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
     cipher
 }
 
-pub fn aes_cbc_decrypt(cipher: Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
+pub fn aes_cbc_decrypt(cipher: &Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
     assert!(cipher.len() % 16 == 0 && key.len() == 16 && iv.len() == 16);
     let aes_dec = aessafe::AesSafe128Decryptor::new(key);
     let mut plain = Vec::new();
@@ -357,13 +357,13 @@ mod tests {
     fn aes_ecb() {
         let plain = b"YELLOW SUBMARINEYELLOW SUBMARINE".to_vec();
         let key = b"YELLOW SUBMARINE".to_vec();
-        let cipher = aes_ecb_encrypt(plain.clone(), &key);
+        let cipher = aes_ecb_encrypt(&plain, &key);
         assert_eq!(
             cipher,
             hex::decode("d1aa4f6578926542fbb6dd876cd20508d1aa4f6578926542fbb6dd876cd20508").unwrap(),
             "cipher"
         );
-        assert_eq!(aes_ecb_decrypt(cipher, &key), plain, "plain");
+        assert_eq!(aes_ecb_decrypt(&cipher, &key), plain, "plain");
     }
 
     #[test]
@@ -371,14 +371,14 @@ mod tests {
         let plain = b"YELLOW SUBMARINEYELLOW SUBMARINE".to_vec();
         let key = b"YELLOW SUBMARINE".to_vec();
         let iv = hex::decode("00000000000000000000000000000000").unwrap();
-        let cipher = aes_cbc_encrypt(plain.clone(), &key, &iv.clone());
+        let cipher = aes_cbc_encrypt(&plain, &key, &iv.clone());
         assert_eq!(
             cipher,
             hex::decode("d1aa4f6578926542fbb6dd876cd20508eaed974f65b7a3a9240d36daef1a31ea").unwrap(),
             "cipher"
         );
         assert_eq!(
-            aes_cbc_decrypt(cipher, &key, &iv),
+            aes_cbc_decrypt(&cipher, &key, &iv),
             plain,
             "plain"
         );

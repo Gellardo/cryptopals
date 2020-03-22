@@ -8,11 +8,11 @@ fn encrypt(email: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     assert!(!email.contains(&('&' as u8)) && !email.contains(&('=' as u8)));
     plain.extend(email);
     plain.extend(b"&uid=10&role=user".to_vec());
-    aes_ecb_encrypt(pad_pkcs7(plain, 16), &key)
+    aes_ecb_encrypt(&pad_pkcs7(plain, 16), &key)
 }
 
 fn decrypt(cipher: Vec<u8>, key: &Vec<u8>) -> String {
-    String::from_utf8(unpad_pkcs7(aes_ecb_decrypt(cipher, key)).unwrap()).unwrap()
+    String::from_utf8(unpad_pkcs7(aes_ecb_decrypt(&cipher, key)).unwrap()).unwrap()
 }
 
 /// Cut&paste with ECB
@@ -36,7 +36,7 @@ fn main() {
     let mut malicious_email = vec![0x41u8; blocksize - prefix_len];
     malicious_email.extend(pad_pkcs7(b"admin".to_vec(), blocksize as u8));
     let malicious_block_2 = encrypt(malicious_email, &key).get(16..32).unwrap().to_owned();
-    debug_assert_eq!(aes_ecb_decrypt(malicious_block_2.to_vec(), &key), pad_pkcs7(b"admin".to_vec(), blocksize as u8));
+    debug_assert_eq!(aes_ecb_decrypt(&malicious_block_2.to_vec(), &key), pad_pkcs7(b"admin".to_vec(), blocksize as u8));
 
     // Since we have a valid block with proper padding from the previous encryption,
     // we can replace the last block with our prepared block.
