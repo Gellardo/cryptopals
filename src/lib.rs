@@ -86,6 +86,21 @@ pub fn aes_cbc_decrypt(cipher: &Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8>
     plain
 }
 
+pub fn ctr_keystream(key: &Vec<u8>, size: usize) -> Vec<u8> {
+    // would be nicer as a generator, but it's not yet stable
+    let aes_enc = aessafe::AesSafe128Encryptor::new(key);
+    let mut keystream = Vec::new();
+    for counter in 0..(size / 16)+1 {
+        let mut block = vec![0; 8];
+        block.extend(&(counter as u64).to_le_bytes());
+
+        let mut out = [0; 16];
+        aes_enc.encrypt_block(block.as_ref(), &mut out);
+        keystream.extend_from_slice(out.as_ref());
+    }
+    keystream
+}
+
 // DECRYPT
 /// Break single byte xor and return the best 3 results
 pub fn break_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
