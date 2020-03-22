@@ -232,11 +232,13 @@ pub fn pad_pkcs7(mut block: Vec<u8>, blocksize: u8) -> Vec<u8> {
 /// assert_eq!(unpad_pkcs7(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 20))?, b"YELLOW SUBMARINE".to_vec());
 /// assert_eq!(unpad_pkcs7(pad_pkcs7(b"YELLOW SUBMARINE".to_vec(), 16))?, b"YELLOW SUBMARINE".to_vec());
 /// assert_eq!(unpad_pkcs7(b"ICE ICE BABY\x01\x02\x03\x04".to_vec()), Err(Pkcs7Padding{padding: 0x04, last_removed: Some(0x03)}));
+/// assert_eq!(unpad_pkcs7(b"ICE ICE BABY\x00".to_vec()), Err(Pkcs7Padding{padding: 0x00, last_removed: None}));
 /// # // IntelliJ shows an error, but rust > 1.34 automatically wraps the test in the correct function signature
 /// # Ok::<(), CryptoError>(())
 /// ```
 pub fn unpad_pkcs7(mut block: Vec<u8>) -> Result<Vec<u8>, CryptoError> {
     let to_remove = block.last().unwrap().to_owned();
+    if to_remove == 0 { return Err(CryptoError::Pkcs7Padding { padding: to_remove, last_removed: None }); }
     for _ in 0..to_remove {
         let popped = block.pop();
         if popped != Some(to_remove) {

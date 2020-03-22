@@ -18,7 +18,9 @@
 /// - we only need to take 2 consecutive blocks to decrypt the second one. This should make the decryption operations faster
 extern crate rand;
 
-use cyptopals::{aes_cbc_decrypt, aes_cbc_encrypt, pad_pkcs7, random_128_bit, unpad_pkcs7, xor};
+use core::mem;
+
+use cyptopals::{aes_cbc_decrypt, aes_cbc_encrypt, pad_pkcs7, random_128_bit, unpad_pkcs7};
 
 fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) {
     let options = vec![
@@ -34,21 +36,67 @@ fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) {
         base64::decode("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"),
     ];
     let plain = options.get(rand::random::<usize>() % options.len()).unwrap().to_owned().unwrap();
-    println!("plain: {:?}", String::from_utf8(plain.clone()));
+    println!("plain: {:?}", String::from_utf8(plain.clone()).unwrap());
+    println!("pos  : 0123456789012345");
     let key = random_128_bit();
     let iv = random_128_bit();
     let cipher = aes_cbc_encrypt(&pad_pkcs7(plain, 16), &key, &iv);
-    (cipher, iv, Box::new(move |cipher, iv| unpad_pkcs7(aes_cbc_decrypt(&cipher, &key, iv)).is_ok()))
+    (cipher, iv, Box::new(move |cipher, iv| {
+        let result = aes_cbc_decrypt(&cipher, &key, iv);
+//        println!("{:?}", result);
+        let result = unpad_pkcs7(result);
+        result.is_ok()
+    }))
 }
 
-fn cbc_padding_oracle(blackbox: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_block: &Vec<u8>, to_decrypt: &Vec<u8>) -> Vec<u8> {
+fn cbc_padding_oracle(oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_block: &Vec<u8>, to_decrypt: &Vec<u8>) -> Vec<u8> {
+    let blocksize = 16;
+    let mut decrypted = vec![0; blocksize];
 
-    to_decrypt.clone()
+    for pos in (0usize..blocksize).rev() {
+        let expected_padding = (blocksize - pos) as u8;
+//        println!("padding {:?}", expected_padding);
+
+        let mut prev = previous_block.clone();
+        let mut current_byte = prev.get(pos).unwrap().to_owned(); // to be bitflipped
+        for known in pos + 1..blocksize {
+            // need to do c ^ b so that p ^ b = padding => b = p ^ padding
+            // c-1 ^ b = p ^ b -> c ^ b = p ^ 2               2 = p ^ b  - > b = p ^ 2
+            let prev_byte = *prev.get(known).unwrap();
+            mem::swap(prev.get_mut(known).unwrap(), &mut (prev_byte ^ decrypted[known] ^ expected_padding));
+        }
+        let mut byte = None;
+        for bitflip in 0..255u8 {
+            mem::swap(prev.get_mut(pos).unwrap(), &mut (current_byte ^ bitflip));
+            if oracle(to_decrypt, &prev) && !(bitflip == 0 && bitflip ^ expected_padding == 1) {
+                byte = Some(bitflip ^ expected_padding);
+//                println!("with bitflip {:?}", bitflip);
+//                println!("found byte {:?}", byte.unwrap());
+                break;
+            }
+        }
+//        println!("found byte {:?}", byte.unwrap() as char);
+        decrypted[pos] = byte.unwrap();
+    }
+
+//    println!("{:?}", decrypted.clone());
+//    println!("{:?}", String::from_utf8(decrypted.clone()));
+    decrypted
 }
 
 fn main() {
     let (cipher, iv, mut oracle) = get_oracle();
     println!("oracle works: {}", oracle(&cipher, &iv));
 
-    cbc_padding_oracle( &mut oracle, &iv, &cipher[0..16].to_vec());
+    let mut decrypted = Vec::new();
+    decrypted.extend(cbc_padding_oracle(&mut oracle, &iv, &cipher[0..16].to_vec()));
+    for block in 1..(cipher.len() / 16) {
+        decrypted.extend(
+            cbc_padding_oracle(
+                &mut oracle,
+                &cipher[(block - 1) * 16..block * 16].to_vec(),
+                &cipher[block * 16..(block + 1) * 16].to_vec())
+        );
+    }
+    println!("{:?}", String::from_utf8(unpad_pkcs7(decrypted.clone()).unwrap()));
 }
