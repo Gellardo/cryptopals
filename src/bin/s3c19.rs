@@ -1,9 +1,9 @@
-/// # Decrypt CTR with static nonce
-/// Basically reuse our breaking of single byte xor:
-/// every i_th byte of all cipher texts is xor'd with the same keystream byte == single byte xor.
-/// The decryption gets worse the less ciphers there are for that position, but it is good enough.
-/// Improvements would be exploiting the statistics of the english language more.
-/// But the challenge says, this is the inferior solution, so lets just move on.
+//! # Decrypt CTR with static nonce
+//! Basically reuse our breaking of single byte xor:
+//! every i_th byte of all cipher texts is xor'd with the same keystream byte == single byte xor.
+//! The decryption gets worse the less ciphers there are for that position, but it is good enough.
+//! Improvements would be exploiting the statistics of the english language more.
+//! But the challenge says, this is the inferior solution, so lets just move on.
 use cyptopals::{aes_ctr, break_xor_single_byte, random_128_bit};
 
 fn get_ciphers() -> Vec<Vec<u8>> {

@@ -1,21 +1,21 @@
-/// # CBC Padding Oracle
-///
-/// Requires:
-/// - ciphertext + iv from cbc encryption
-/// - oracle that returns true if decrypting a ciphertext has a valid padding and can be queried repeatedly
-///
-/// Idea: Go backwards through the ciphertext, guessing one byte at a time
-/// - by bitflipping the previous block, we can change the value of the last byte.
-/// - try out all bitflips until the oracle answers with true with bitflip `b`
-/// - we now know the last byte: `0x01 ^ b`
-/// - for the next byte, choose a bitflip that changes the last byte to `0x02`
-/// - repeat the previous process until the oracle returns a true, then the second to last byte is `0x02 ^ b'`
-/// - repeat until every byte is known, discarding blocks from matching once all bytes have been found
-///
-/// Possible edgecase and improvements (from research):
-/// - the block already has valid padding (ends on `02 02`) we have 2 possible valid found bytes: `02` and `01`.
-///   can be caught by checking if block by its own already returns a valid padding
-/// - we only need to take 2 consecutive blocks to decrypt the second one. This should make the decryption operations faster
+//! # CBC Padding Oracle
+//!
+//! Requires:
+//! - ciphertext + iv from cbc encryption
+//! - oracle that returns true if decrypting a ciphertext has a valid padding and can be queried repeatedly
+//!
+//! Idea: Go backwards through the ciphertext, guessing one byte at a time
+//! - by bitflipping the previous block, we can change the value of the last byte.
+//! - try out all bitflips until the oracle answers with true with bitflip `b`
+//! - we now know the last byte: `0x01 ^ b`
+//! - for the next byte, choose a bitflip that changes the last byte to `0x02`
+//! - repeat the previous process until the oracle returns a true, then the second to last byte is `0x02 ^ b'`
+//! - repeat until every byte is known, discarding blocks from matching once all bytes have been found
+//!
+//! Possible edgecase and improvements (from research):
+//! - the block already has valid padding (ends on `02 02`) we have 2 possible valid found bytes: `02` and `01`.
+//!   can be caught by checking if block by its own already returns a valid padding
+//! - we only need to take 2 consecutive blocks to decrypt the second one. This should make the decryption operations faster
 extern crate rand;
 
 use core::mem;

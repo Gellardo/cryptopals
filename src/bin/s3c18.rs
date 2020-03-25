@@ -1,4 +1,4 @@
-/// # CTR
+//! # CTR
 use cyptopals::aes_ctr;
 
 fn main() {
