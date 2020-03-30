@@ -61,11 +61,53 @@ impl MersenneTwister {
     }
 }
 
-#[test]
-fn rng_working_correctly() {
-    let mut rng = MersenneTwister::new();
-    rng.seed(1);
-    debug_assert_eq!(rng.extract_number().unwrap(), 1791095845);
-    debug_assert_eq!(rng.extract_number().unwrap(), 4282876139);
-    debug_assert_eq!(rng.extract_number().unwrap(), 3093770124);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::SystemTime;
+
+    #[test]
+    fn rng_working_correctly() {
+        let mut rng = MersenneTwister::new();
+        rng.seed(1);
+        debug_assert_eq!(rng.extract_number().unwrap(), 1791095845);
+        debug_assert_eq!(rng.extract_number().unwrap(), 4282876139);
+        debug_assert_eq!(rng.extract_number().unwrap(), 3093770124);
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_with_same_struct() {
+        let start = SystemTime::now();
+        let mut rng = MersenneTwister::new();
+        for i in 1..10_000 {
+            rng.seed(i);
+            rng.extract_number();
+        }
+        println!("Took {:?} seconds", start.elapsed().unwrap())
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_with_new_struct() {
+        let start = SystemTime::now();
+        for i in 1..10_000 {
+            let mut rng = MersenneTwister::new();
+            rng.seed(0);
+            rng.extract_number();
+        }
+        println!("Took {:?} seconds", start.elapsed().unwrap())
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_with_single_seed() {
+        let start = SystemTime::now();
+        let mut rng = MersenneTwister::new();
+        rng.seed(0);
+        for i in 1..10_000 {
+            rng.extract_number();
+        }
+        println!("Took {:?} seconds", start.elapsed().unwrap())
+    }
 }
