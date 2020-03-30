@@ -32,7 +32,6 @@ impl MersenneTwister {
             if self.index > N {
                 return Err("Generator was never seeded".to_string());
             }
-            println!("twist");
             self.twist()
         }
 
@@ -48,8 +47,7 @@ impl MersenneTwister {
 
     fn twist(&mut self) {
         let a = Wrapping(0x9908B0DF);
-        let r = 31u32;
-        let lower_mask = Wrapping((1 << r) - 1);// That is, the binary number of r 1's
+        let lower_mask = Wrapping((1 << 31) - 1);// That is, the binary number of r 1's
         let upper_mask = !lower_mask;
         for i in 0..N {
             let x: Wrapping<u32> = (self.state[i] & upper_mask) + (self.state[(i + 1) % N] & lower_mask);
