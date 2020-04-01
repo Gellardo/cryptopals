@@ -5,5 +5,5 @@ use cyptopals::mt19937::MersenneTwister;
 fn main() {
     let mut rng = MersenneTwister::new();
     rng.seed(1);
-    rng.extract_number();
+    rng.extract_number().expect("a number");
 }
