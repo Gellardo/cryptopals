@@ -7,6 +7,8 @@ use std::collections::HashSet;
 
 use crypto::aessafe;
 use crypto::symmetriccipher::{BlockDecryptor, BlockEncryptor};
+use rand::{thread_rng, Rng};
+use rand::distributions::Standard;
 
 pub mod mt19937;
 
@@ -275,6 +277,15 @@ pub fn unpad_pkcs7(mut block: Vec<u8>) -> Result<Vec<u8>, CryptoError> {
 #[derive(Debug, Eq, PartialEq)]
 pub enum CryptoError {
     Pkcs7Padding { padding: u8, last_removed: Option<u8> },
+}
+
+/// Prepend a random, random length prefix
+pub fn prepend_random_prefix(data: Vec<u8>) -> Vec<u8> {
+    let mut rng = thread_rng();
+    let mut data_ext = Vec::new();
+    data_ext.extend(rng.sample_iter(Standard).take(rng.gen_range(1, 32)).collect::<Vec<u8>>());
+    data_ext.extend(data);
+    data_ext
 }
 
 /// perhaps i am going to use it some time in the future

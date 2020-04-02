@@ -137,9 +137,28 @@ pub fn clone(outputs: Vec<u32>) -> MersenneTwister {
     MersenneTwister { state, index: N }
 }
 
+pub fn stream_cipher(data: &Vec<u8>, seed: u16) -> Vec<u8> {
+    let mut keystream = Vec::new();
+    let mut rng = MersenneTwister::new();
+    rng.seed(seed as u32);
+    for _ in 0..=data.len() / 4 {
+        let next = rng.extract_number().expect("number");
+        keystream.push( ((next & 0xFF000000) >> 24) as u8);
+        keystream.push( ((next & 0x00FF0000) >> 16) as u8);
+        keystream.push( ((next & 0x0000FF00) >> 8) as u8);
+        keystream.push( (next & 0x000000FF) as u8);
+    }
+    data.iter()
+        .zip(keystream)
+        .map(|(x, y)| x ^ y)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::SystemTime;
+
+    use rand::random;
 
     use super::*;
 
@@ -196,5 +215,17 @@ mod tests {
             rng.extract_number().expect("number");
         }
         println!("Took {:?} seconds", start.elapsed().unwrap())
+    }
+
+    #[test]
+    fn rng_as_streamcipher() {
+        let text = b"This is some longer text to allow me to test the cipher for different lengths.";
+        for i in 0..text.len() {
+            let seed = random();
+            assert_eq!(
+                stream_cipher(&stream_cipher(&text[0..i].to_vec(), seed), seed),
+                text[0..i].to_vec()
+            );
+        }
     }
 }
