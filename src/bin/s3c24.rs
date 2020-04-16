@@ -34,6 +34,11 @@ fn recover_key() {
     assert_eq!(seed, recovered_seed.expect("no seed found"));
 }
 
+/// The way i read it, this would be another brute force attack. Which is boring.
+///
+/// Password = seed rng with now(), throw a few (hundred) bytes away, take 2-4 outputs as random password.
+/// Reversing would only be a combination of the timebased brute force of previous exercises with matching a certain output pattern.
+/// Skip.
 fn password_reset_token() {
     // let current = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_millis() as u32;
 }
