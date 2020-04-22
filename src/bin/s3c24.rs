@@ -4,7 +4,6 @@
 //! But since the challenge wants to use a 16 bit key, it is probably easier to use the recovered keystream to bruteforce those 16 bit.
 
 use std::error::Error;
-use std::time::SystemTime;
 
 use rand::random;
 

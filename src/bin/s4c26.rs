@@ -3,8 +3,6 @@
 //! Works even better than cbc, since wie don't destroy the previous block with the bitflip.
 //! Apart from that, the attack is the same, guess/know the offset of my plaintext, calculate the controlled bitflips and apply them.
 //! Only had to change the encryption functions and the offset.
-use std::fs;
-
 use cyptopals::{aes_ctr, random_128_bit, xor};
 use std::iter::FromIterator;
 
