@@ -11,6 +11,7 @@ use rand::{thread_rng, Rng};
 use rand::distributions::Standard;
 
 pub mod mt19937;
+pub mod sha1;
 
 pub fn xor(s1: Vec<u8>, s2: &Vec<u8>) -> Vec<u8> {
     assert_eq!(s1.len(), s2.len(), "parameters must be the same length");
