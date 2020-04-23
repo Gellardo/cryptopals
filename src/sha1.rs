@@ -25,13 +25,15 @@ impl Sha1 {
     }
 
     /// Based on assumptions about the rust crypto implementation, we can get access to the underlying state
+    /// Prone to breaking if [sha1::Sha1] struct changes
     pub fn new_with_state(state: [u32; 5]) -> Sha1 {
         let sha1 = sha1::Sha1::new();
         // this works as long as the underlying structure does not change
         // otherwise i expect this to break horribly
         let mut hacked: HackSha1 = unsafe { mem::transmute(sha1) };
         hacked.h = state;
-        Sha1 { sha1 }
+        let sha1_changed = unsafe { mem::transmute(hacked) };
+        Sha1 { sha1: sha1_changed }
     }
 
     /// Based on assumptions about the rust crypto implementation, we can get access to the state
@@ -89,9 +91,18 @@ mod tests {
 
     #[test]
     fn sha1_unsafe_code_not_obviously_broken() {
-        let mut hash_hacked = Sha1::new_with_state([0, 1, 2, 4, 4]);
+        let mut hash_hacked = Sha1::new_with_state([0, 1, 2, 3, 4]);
+        assert_eq!(hash_hacked.get_state(), [0, 1, 2, 3, 4]);
         hash_hacked.input(&[2; 50]);
-        hash_hacked.result_str();
+        assert_eq!(hash_hacked.result_str(),
+                   "c3076928b640fff2b352d65a7b3c380170baffe7", // calculated correctly
+                   "changed the whole state, depends on sha1::Sha1 memory layout, \
+                       error means the HackedSha1 struct should be checked");
+
+        //using the default values should produce the one for the empty string
+        let default_start_state = [ 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
+        let mut hash_hacked = Sha1::new_with_state(default_start_state);
+        assert_eq!(hash_hacked.result_str(), "da39a3ee5e6b4b0d3255bfef95601890afd80709", "using default state");
     }
 
     #[test]
