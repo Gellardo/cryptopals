@@ -43,6 +43,16 @@ impl Sha1 {
         let hacked: HackSha1 = unsafe { mem::transmute(self.sha1) };
         hacked.h
     }
+
+    /// Perform Sha1(key||data)
+    pub fn keyed_mac(key: Vec<u8>, data: Vec<u8>) -> Vec<u8> {
+        let mut sha1 = Sha1::new();
+        sha1.input(&key);
+        sha1.input(&data);
+        let mut out = vec![0u8; sha1.output_bytes()];
+        sha1.result(&mut out);
+        out
+    }
 }
 
 
@@ -100,7 +110,7 @@ mod tests {
                        error means the HackedSha1 struct should be checked");
 
         //using the default values should produce the one for the empty string
-        let default_start_state = [ 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
+        let default_start_state = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
         let mut hash_hacked = Sha1::new_with_state(default_start_state);
         assert_eq!(hash_hacked.result_str(), "da39a3ee5e6b4b0d3255bfef95601890afd80709", "using default state");
     }
