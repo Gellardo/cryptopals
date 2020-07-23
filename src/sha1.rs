@@ -1,10 +1,13 @@
 //! # Implement SHA1, trying to proxy the std one first
+use core::fmt;
+use std::fmt::{Debug, Formatter};
 use std::mem;
 
 use crypto::digest::Digest;
 use crypto::sha1;
 
 /// from crypto::sha1::Sha1
+#[derive(Debug)]
 pub struct HackSha1 {
     h: [u32; 5],
     _length_bits: u64,
@@ -15,6 +18,15 @@ pub struct HackSha1 {
 struct FixedBuffer64 {
     _buffer: [u8; 64],
     _buffer_idx: usize,
+}
+
+impl Debug for FixedBuffer64 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("Buffer");
+        s.field("idx", &self._buffer_idx);
+        if self._buffer_idx > 0 { s.field("last", &self._buffer[self._buffer_idx - 1]); }
+        s.finish()
+    }
 }
 
 pub struct Sha1 { sha1: sha1::Sha1 }
@@ -36,22 +48,52 @@ impl Sha1 {
         Sha1 { sha1: sha1_changed }
     }
 
+    pub fn set_state(&mut self, state: [u32; 5]) {
+        // this works as long as the underlying structure does not change
+        // otherwise i expect this to break horribly
+        let mut hacked: HackSha1 = unsafe { mem::transmute(self.sha1) };
+        println!("before {:?}", hacked);
+        hacked.h = state;
+        println!("after {:?}", hacked);
+        let sha1_changed = unsafe { mem::transmute(hacked) };
+        self.sha1 = sha1_changed;
+    }
+
+
     /// Based on assumptions about the rust crypto implementation, we can get access to the state
     pub fn get_state(&mut self) -> [u32; 5] {
         // this works as long as the underlying structure does not change
         // otherwise i expect this to break horribly
         let hacked: HackSha1 = unsafe { mem::transmute(self.sha1) };
+        println!("{:?}", hacked);
         hacked.h
     }
 
+    pub fn result_vec(&mut self) -> Vec<u8> {
+        let mut out = vec![0u8; self.sha1.output_bytes()];
+        self.sha1.result(&mut out);
+        out.to_vec()
+    }
+
     /// Perform Sha1(key||data)
-    pub fn keyed_mac(key: Vec<u8>, data: Vec<u8>) -> Vec<u8> {
+    pub fn keyed_mac(key: &Vec<u8>, data: &Vec<u8>) -> Vec<u8> {
+        let mut sha1 = Sha1::new();
+        sha1.input(key);
+        sha1.input(data);
+        let mut out = vec![0u8; sha1.output_bytes()];
+        sha1.result(&mut out);
+        sha1.get_state();
+        out
+    }
+
+    /// validate that Sha1(key||data) == mac
+    pub fn validate_mac(key: &Vec<u8>, data: &Vec<u8>, mac: &Vec<u8>) -> bool {
         let mut sha1 = Sha1::new();
         sha1.input(&key);
         sha1.input(&data);
         let mut out = vec![0u8; sha1.output_bytes()];
         sha1.result(&mut out);
-        out
+        out == *mac
     }
 }
 
@@ -113,6 +155,17 @@ mod tests {
         let default_start_state = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
         let mut hash_hacked = Sha1::new_with_state(default_start_state);
         assert_eq!(hash_hacked.result_str(), "da39a3ee5e6b4b0d3255bfef95601890afd80709", "using default state");
+    }
+
+    #[test]
+    fn overriding_the_state_produces_the_same_result() {
+        // requirement: strings have to be >64 chars long (internal buffer) and have the same length
+        let mut sha1 = Sha1::new();
+        sha1.input(b"ab---------------------------------------------------------------------------------------------------------------------------");
+        let mut sha2 = Sha1::new();
+        sha2.input(b"00---------------------------------------------------------------------------------------------------------------------------");
+        sha2.set_state(sha1.get_state());
+        assert_eq!(sha1.result_vec(), sha2.result_vec())
     }
 
     #[test]
