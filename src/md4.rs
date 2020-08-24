@@ -140,11 +140,11 @@ fn do_block(md4: &mut MyMd4, block: [u8; 64]) {
     // println!("{:x?}", sha1.h);
 }
 
-fn ass(is: u32, ex: u32, s: String) {
-    println!("ex: {:0x?}", ex);
-    println!("is: {:0x?}", is);
-    assert_eq!(is, ex, "{}", s);
-}
+// fn ass(is: u32, ex: u32, s: String) {
+//     println!("ex: {:0x?}", ex);
+//     println!("is: {:0x?}", is);
+//     assert_eq!(is, ex, "{}", s);
+// }
 
 #[cfg(test)]
 mod tests {

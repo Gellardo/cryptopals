@@ -38,7 +38,7 @@ impl MySha1 {
         input
     }
 
-    /// Hash input vector, assumes padding has been applied already
+    /// Hash input vector, assumes (mandatory) padding has been applied already
     pub fn hash(input: Vec<u8>) -> [u32; 5] {
         MySha1::hash_with_initial_state(STARTING_STATE, input)
     }
@@ -59,6 +59,14 @@ impl MySha1 {
     pub fn keyed_mac(key: &Vec<u8>, data: &Vec<u8>) -> [u32; 5] {
         let mut input = key.clone();
         input.append(&mut data.clone());
+        MySha1::hash(MySha1::pad(input))
+    }
+
+    /// Sha1 hmac
+    pub fn hmac(key: &Vec<u8>, data: &Vec<u8>) -> [u32; 5] {
+        let mut input = key.clone();
+        input.extend_from_slice(data);
+        input.extend_from_slice(key);
         MySha1::hash(MySha1::pad(input))
     }
 
@@ -166,5 +174,12 @@ mod tests {
         assert!(MySha1::validate_mac(&key, &data, &mac));
         assert!(!MySha1::validate_mac(&b"123".to_vec(), &data, &mac));
         assert!(!MySha1::validate_mac(&key, &b"new data".to_vec(), &mac));
+    }
+
+    #[test]
+    fn hmac() {
+        assert_eq!(
+            MySha1::hmac(&b"a".to_vec(), &b"b".to_vec()),
+            MySha1::hash(MySha1::pad(b"aba".to_vec())))
     }
 }

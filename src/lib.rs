@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use crypto::aessafe;
 use crypto::symmetriccipher::{BlockDecryptor, BlockEncryptor};
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 use rand::distributions::Standard;
 
 pub mod mt19937;
@@ -33,6 +33,10 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
         keystream.push(key[i % key.len()]);
     }
     xor(plain, &keystream)
+}
+
+pub fn u32_be_bytes(arr: &[u32]) -> Vec<u8> {
+    arr.iter().flat_map(|x|x.to_be_bytes().to_vec()).collect()
 }
 
 pub fn aes_ecb_encrypt(plain: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
@@ -96,7 +100,7 @@ pub fn ctr_keystream(key: &Vec<u8>, nonce: u64, size: usize) -> Vec<u8> {
     // would be nicer as a generator, but it's not yet stable
     let aes_enc = aessafe::AesSafe128Encryptor::new(key);
     let mut keystream = Vec::new();
-    for counter in 0..(size / 16)+1 {
+    for counter in 0..(size / 16) + 1 {
         let mut block = nonce.to_le_bytes().to_vec();
         block.extend(&(counter as u64).to_le_bytes());
 
@@ -421,5 +425,10 @@ mod tests {
             plain,
             "plain"
         );
+    }
+
+    #[test]
+    fn converting_u32_to_vec(){
+        assert_eq!(u32_be_bytes(&[0x01234567, 0x89abcdef]), vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef])
     }
 }
