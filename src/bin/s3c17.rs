@@ -25,7 +25,9 @@ use cyptopals::{aes_cbc_decrypt, aes_cbc_encrypt, pad_pkcs7, random_128_bit, unp
 fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) {
     let options = vec![
         base64::decode("MDAwMDAwTm93IHRoYXQgdGhlIHBhcnR5IGlzIGp1bXBpbmc="),
-        base64::decode("MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic="),
+        base64::decode(
+            "MDAwMDAxV2l0aCB0aGUgYmFzcyBraWNrZWQgaW4gYW5kIHRoZSBWZWdhJ3MgYXJlIHB1bXBpbic=",
+        ),
         base64::decode("MDAwMDAyUXVpY2sgdG8gdGhlIHBvaW50LCB0byB0aGUgcG9pbnQsIG5vIGZha2luZw=="),
         base64::decode("MDAwMDAzQ29va2luZyBNQydzIGxpa2UgYSBwb3VuZCBvZiBiYWNvbg=="),
         base64::decode("MDAwMDA0QnVybmluZyAnZW0sIGlmIHlvdSBhaW4ndCBxdWljayBhbmQgbmltYmxl"),
@@ -35,34 +37,49 @@ fn get_oracle() -> (Vec<u8>, Vec<u8>, Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) {
         base64::decode("MDAwMDA4b2xsaW4nIGluIG15IGZpdmUgcG9pbnQgb2g="),
         base64::decode("MDAwMDA5aXRoIG15IHJhZy10b3AgZG93biBzbyBteSBoYWlyIGNhbiBibG93"),
     ];
-    let plain = options.get(rand::random::<usize>() % options.len()).unwrap().to_owned().unwrap();
+    let plain = options
+        .get(rand::random::<usize>() % options.len())
+        .unwrap()
+        .to_owned()
+        .unwrap();
     println!("plain: {:?}", String::from_utf8(plain.clone()).unwrap());
     println!("pos  : 0123456789012345");
     let key = random_128_bit();
     let iv = random_128_bit();
     let cipher = aes_cbc_encrypt(&pad_pkcs7(plain, 16), &key, &iv);
-    (cipher, iv, Box::new(move |cipher, iv| {
-        let result = aes_cbc_decrypt(&cipher, &key, iv);
-//        println!("{:?}", result);
-        let result = unpad_pkcs7(result);
-        result.is_ok()
-    }))
+    (
+        cipher,
+        iv,
+        Box::new(move |cipher, iv| {
+            let result = aes_cbc_decrypt(&cipher, &key, iv);
+            //        println!("{:?}", result);
+            let result = unpad_pkcs7(result);
+            result.is_ok()
+        }),
+    )
 }
 
-fn cbc_padding_oracle(oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_block: &Vec<u8>, to_decrypt: &Vec<u8>) -> Vec<u8> {
+fn cbc_padding_oracle(
+    oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool,
+    previous_block: &Vec<u8>,
+    to_decrypt: &Vec<u8>,
+) -> Vec<u8> {
     let blocksize = 16;
     let mut decrypted = vec![0; blocksize];
 
     for pos in (0usize..blocksize).rev() {
         let expected_padding = (blocksize - pos) as u8;
-//        println!("padding {:?}", expected_padding);
+        //        println!("padding {:?}", expected_padding);
 
         let mut prev = previous_block.clone();
         let current_byte = prev.get(pos).unwrap().to_owned(); // to be bitflipped
         for known in pos + 1..blocksize {
             // need to do c ^ b so that p ^ b = padding => b = p ^ padding
             let prev_byte = *prev.get(known).unwrap();
-            mem::swap(prev.get_mut(known).unwrap(), &mut (prev_byte ^ decrypted[known] ^ expected_padding));
+            mem::swap(
+                prev.get_mut(known).unwrap(),
+                &mut (prev_byte ^ decrypted[known] ^ expected_padding),
+            );
         }
         let mut byte = None;
         for bitflip in 0..255u8 {
@@ -70,30 +87,33 @@ fn cbc_padding_oracle(oracle: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool, previous_
             // don't guess '1' without bitflips, since it could also be another valid padding
             if oracle(to_decrypt, &prev) && !(bitflip == 0 && bitflip ^ expected_padding == 1) {
                 byte = Some(bitflip ^ expected_padding);
-//                println!("with bitflip {:?}", bitflip);
-//                println!("found byte {:?}", byte.unwrap());
+                //                println!("with bitflip {:?}", bitflip);
+                //                println!("found byte {:?}", byte.unwrap());
                 break;
             }
         }
-//        println!("found byte {:?}", byte.unwrap() as char);
+        //        println!("found byte {:?}", byte.unwrap() as char);
         decrypted[pos] = byte.unwrap_or(1); // I excluded 1 earlier, but it can be a valid option
     }
 
-//    println!("{:?}", decrypted.clone());
-//    println!("{:?}", String::from_utf8(decrypted.clone()));
+    //    println!("{:?}", decrypted.clone());
+    //    println!("{:?}", String::from_utf8(decrypted.clone()));
     decrypted
 }
 
-fn cbc_padding_oracle_multi(cipher: &Vec<u8>, iv: &Vec<u8>, oracle: &mut Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>) -> Vec<u8> {
+fn cbc_padding_oracle_multi(
+    cipher: &Vec<u8>,
+    iv: &Vec<u8>,
+    oracle: &mut Box<dyn Fn(&Vec<u8>, &Vec<u8>) -> bool>,
+) -> Vec<u8> {
     let mut decrypted = Vec::new();
     decrypted.extend(cbc_padding_oracle(oracle, &iv, &cipher[0..16].to_vec()));
     for block in 1..(cipher.len() / 16) {
-        decrypted.extend(
-            cbc_padding_oracle(
-                oracle,
-                &cipher[(block - 1) * 16..block * 16].to_vec(),
-                &cipher[block * 16..(block + 1) * 16].to_vec())
-        );
+        decrypted.extend(cbc_padding_oracle(
+            oracle,
+            &cipher[(block - 1) * 16..block * 16].to_vec(),
+            &cipher[block * 16..(block + 1) * 16].to_vec(),
+        ));
     }
     decrypted
 }
@@ -103,5 +123,8 @@ fn main() {
     println!("oracle works: {}", oracle(&cipher, &iv));
 
     let decrypted = cbc_padding_oracle_multi(&cipher, &iv, &mut oracle);
-    println!("{:?}", String::from_utf8(unpad_pkcs7(decrypted.clone()).unwrap()));
+    println!(
+        "{:?}",
+        String::from_utf8(unpad_pkcs7(decrypted.clone()).unwrap())
+    );
 }

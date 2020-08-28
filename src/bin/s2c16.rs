@@ -46,7 +46,11 @@ use cyptopals::{aes_cbc_decrypt, aes_cbc_encrypt, pad_pkcs7, random_128_bit, unp
 fn encrypt(mut userdata: Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
     let mut plain = b"comment1=cooking%20MCs;userdata=".to_vec();
     println!("prefix lenght: {}", plain.len());
-    userdata = userdata.iter().filter(|e| **e != ';' as u8 && **e != '=' as u8).map(|e| *e).collect();
+    userdata = userdata
+        .iter()
+        .filter(|e| **e != ';' as u8 && **e != '=' as u8)
+        .map(|e| *e)
+        .collect();
     plain.extend(userdata);
     println!("prefix+user lenght: {}", plain.len());
     plain.extend(b";comment2=%20like%20a%20pound%20of%20bacon".to_vec());

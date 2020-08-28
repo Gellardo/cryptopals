@@ -6,7 +6,10 @@ const M: usize = 397;
 
 const F: Wrapping<u32> = Wrapping(1812433253);
 
-pub struct MersenneTwister { state: [Wrapping<u32>; N], index: usize }
+pub struct MersenneTwister {
+    state: [Wrapping<u32>; N],
+    index: usize,
+}
 
 impl MersenneTwister {
     pub fn new() -> Self {
@@ -21,9 +24,11 @@ impl MersenneTwister {
     pub fn seed(&mut self, seed: u32) {
         self.index = N;
         self.state[0] = Wrapping(seed);
-        for i in 1..N { // loop over each element
+        for i in 1..N {
+            // loop over each element
             // lowest W bits of function
-            self.state[i] = F * (self.state[i - 1] ^ (self.state[i - 1] >> 30)) + Wrapping(i as u32);
+            self.state[i] =
+                F * (self.state[i - 1] ^ (self.state[i - 1] >> 30)) + Wrapping(i as u32);
         }
     }
 
@@ -42,12 +47,14 @@ impl MersenneTwister {
 
     fn twist(&mut self) {
         let a = Wrapping(0x9908B0DF);
-        let lower_mask = Wrapping((1 << 31) - 1);// That is, the binary number of r 1's
+        let lower_mask = Wrapping((1 << 31) - 1); // That is, the binary number of r 1's
         let upper_mask = !lower_mask;
         for i in 0..N {
-            let x: Wrapping<u32> = (self.state[i] & upper_mask) + (self.state[(i + 1) % N] & lower_mask);
+            let x: Wrapping<u32> =
+                (self.state[i] & upper_mask) + (self.state[(i + 1) % N] & lower_mask);
             let mut x_a = x >> 1;
-            if (x.0 % 2) != 0 { // lowest bit of x is 1
+            if (x.0 % 2) != 0 {
+                // lowest bit of x is 1
                 x_a = x_a ^ a
             }
             self.state[i] = self.state[(i + M) % N] ^ x_a
@@ -128,7 +135,10 @@ fn untemper(mut x: u32) -> u32 {
 }
 
 pub fn clone(outputs: Vec<u32>) -> MersenneTwister {
-    assert!(outputs.len() >= N, "We need at least N inputs to recover the state");
+    assert!(
+        outputs.len() >= N,
+        "We need at least N inputs to recover the state"
+    );
     let mut state = [Wrapping(0); N];
     for i in 0..N {
         state[i] = Wrapping(untemper(outputs[i]));
@@ -143,15 +153,12 @@ pub fn stream_cipher(data: &Vec<u8>, seed: u16) -> Vec<u8> {
     rng.seed(seed as u32);
     for _ in 0..=data.len() / 4 {
         let next = rng.extract_number().expect("number");
-        keystream.push( ((next & 0xFF000000) >> 24) as u8);
-        keystream.push( ((next & 0x00FF0000) >> 16) as u8);
-        keystream.push( ((next & 0x0000FF00) >> 8) as u8);
-        keystream.push( (next & 0x000000FF) as u8);
+        keystream.push(((next & 0xFF000000) >> 24) as u8);
+        keystream.push(((next & 0x00FF0000) >> 16) as u8);
+        keystream.push(((next & 0x0000FF00) >> 8) as u8);
+        keystream.push((next & 0x000000FF) as u8);
     }
-    data.iter()
-        .zip(keystream)
-        .map(|(x, y)| x ^ y)
-        .collect()
+    data.iter().zip(keystream).map(|(x, y)| x ^ y).collect()
 }
 
 #[cfg(test)]
@@ -219,7 +226,8 @@ mod tests {
 
     #[test]
     fn rng_as_streamcipher() {
-        let text = b"This is some longer text to allow me to test the cipher for different lengths.";
+        let text =
+            b"This is some longer text to allow me to test the cipher for different lengths.";
         for i in 0..text.len() {
             let seed = random();
             assert_eq!(

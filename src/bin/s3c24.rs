@@ -21,8 +21,12 @@ fn recover_key() {
     let plain = vec![0u8; cipher.len()];
     let mut recovered_seed = None;
     for s in 0..=65535u16 {
-        if s % 1024 == 1023 { print!("."); }
-        if s % 8192 == 8191 { println!(); }
+        if s % 1024 == 1023 {
+            print!(".");
+        }
+        if s % 8192 == 8191 {
+            println!();
+        }
         if stream_cipher(&plain, s).get(offset..cipher.len()) == cipher.get(offset..cipher.len()) {
             println!("{}", s);
             recovered_seed = Some(s);

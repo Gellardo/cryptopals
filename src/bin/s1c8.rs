@@ -24,7 +24,9 @@ fn main() {
             }
         }
         // could probably get 'better' threshold by estimation using the birthday paradox
-        if score > 0 { scored_ciphers.push((score, i)) }
+        if score > 0 {
+            scored_ciphers.push((score, i))
+        }
     }
 
     println!("(score, line), where score > 0 indicates an ecb cipher, at least for these short ciphertexts");

@@ -1,6 +1,9 @@
 extern crate rand;
 
-use cyptopals::{aes_ecb_encrypt, compare, detect_blocksize, detect_ecb, extract_fixed_suffix, pad_pkcs7, random_128_bit};
+use cyptopals::{
+    aes_ecb_encrypt, compare, detect_blocksize, detect_ecb, extract_fixed_suffix, pad_pkcs7,
+    random_128_bit,
+};
 
 /// Byte at a time ecb decryption (simple)
 fn main() {
@@ -13,9 +16,17 @@ fn main() {
 
     let blocksize = detect_blocksize(&mut encrypt_blackbox).unwrap();
     println!("Cipher has blocksize {} bytes", blocksize);
-    println!("Cipher is using ecb: {}", detect_ecb(&mut encrypt_blackbox, blocksize));
+    println!(
+        "Cipher is using ecb: {}",
+        detect_ecb(&mut encrypt_blackbox, blocksize)
+    );
 
     let decrypted_secret = extract_fixed_suffix(&mut encrypt_blackbox, blocksize);
-    println!("decrypted secret matches: {} (len: {}, {})", decrypted_secret == secret_data, decrypted_secret.len(), secret_data.len());
+    println!(
+        "decrypted secret matches: {} (len: {}, {})",
+        decrypted_secret == secret_data,
+        decrypted_secret.len(),
+        secret_data.len()
+    );
     assert!(compare(&decrypted_secret, &secret_data));
 }

@@ -10,7 +10,8 @@ use cyptopals::sha1::MySha1;
 
 fn main() {
     let key = random_128_bit();
-    let data = b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon".to_vec();
+    let data =
+        b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon".to_vec();
     let orig_mac = MySha1::keyed_mac(&key, &data);
     println!("Original Mac: {:?} / {:02x?}", orig_mac, orig_mac);
     println!();
@@ -22,7 +23,11 @@ fn main() {
     println!("malicious data: {}", base64::encode(&malicous_data));
     println!("malicious data: {}", hex::encode(&malicous_data));
 
-    println!("expect: {:02x?}\ngot   : {:02x?}", MySha1::keyed_mac(&key, &malicous_data), mac2);
+    println!(
+        "expect: {:02x?}\ngot   : {:02x?}",
+        MySha1::keyed_mac(&key, &malicous_data),
+        mac2
+    );
     assert!(MySha1::validate_mac(&key, &malicous_data, &mac2));
 }
 
@@ -37,7 +42,10 @@ fn sha_extension_attack(keylen: usize, data: Vec<u8>, orig_mac: [u32; 5]) -> (Ve
     // add dummy data to increment internal "data length" counter and a fixed len buffer
     let suffix_len = malicious_suffix.len();
     // the size in the final padding has to fit the whole message.
-    let padded_input = MySha1::pad_fake_size(malicious_suffix, keylen + data.len() + glue_padding.len() + suffix_len);
+    let padded_input = MySha1::pad_fake_size(
+        malicious_suffix,
+        keylen + data.len() + glue_padding.len() + suffix_len,
+    );
     let mac2 = MySha1::hash_with_initial_state(orig_mac, padded_input);
     (malicous_data, mac2)
 }
@@ -47,9 +55,10 @@ mod test {
     use super::*;
 
     #[test]
-    fn works(){
-        let key = b"1234".to_vec();//random_128_bit();
-        let data = b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon".to_vec();
+    fn works() {
+        let key = b"1234".to_vec(); //random_128_bit();
+        let data = b"comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon"
+            .to_vec();
         let orig_mac = MySha1::keyed_mac(&key, &data);
         // Assume I just know the key length (otherwise just iterate sizes until it works)
         let (malicous_data, mac2) = sha_extension_attack(key.len(), data, orig_mac);

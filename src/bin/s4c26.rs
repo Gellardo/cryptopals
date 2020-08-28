@@ -10,7 +10,11 @@ use std::iter::FromIterator;
 fn encrypt(mut userdata: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     let mut plain = b"comment1=cooking%20MCs;userdata=".to_vec();
     println!("prefix lenght: {}", plain.len());
-    userdata = userdata.iter().filter(|e| **e != ';' as u8 && **e != '=' as u8).map(|e| *e).collect();
+    userdata = userdata
+        .iter()
+        .filter(|e| **e != ';' as u8 && **e != '=' as u8)
+        .map(|e| *e)
+        .collect();
     plain.extend(userdata);
     println!("prefix+user lenght: {}", plain.len());
     plain.extend(b";comment2=%20like%20a%20pound%20of%20bacon".to_vec());
@@ -31,11 +35,11 @@ fn main() {
     let user_plain = b"0123456789012345".to_vec();
     let intended_plain = b"AAAAA;admin=true".to_vec();
     let plain_len = user_plain.len();
-    let magic_offset = 16*2;
+    let magic_offset = 16 * 2;
     let bitflips = xor(user_plain.clone(), &intended_plain);
     let mut cipher = encrypt(user_plain, &key);
 
-    let range_previous_block =  magic_offset..magic_offset + plain_len;
+    let range_previous_block = magic_offset..magic_offset + plain_len;
     let previous_block = cipher.get(range_previous_block.clone()).unwrap().to_vec();
     let replacement = xor(previous_block, &bitflips);
     cipher.splice(range_previous_block, replacement);

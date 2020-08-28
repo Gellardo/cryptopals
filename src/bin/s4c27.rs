@@ -25,7 +25,11 @@ use cyptopals::{aes_cbc_decrypt, aes_cbc_encrypt, pad_pkcs7, random_128_bit, unp
 fn encrypt(mut userdata: Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
     let mut plain = b"comment1=cooking%20MCs;userdata=".to_vec();
     println!("prefix lenght: {}", plain.len());
-    userdata = userdata.iter().filter(|e| **e != ';' as u8 && **e != '=' as u8).map(|e| *e).collect();
+    userdata = userdata
+        .iter()
+        .filter(|e| **e != ';' as u8 && **e != '=' as u8)
+        .map(|e| *e)
+        .collect();
     plain.extend(userdata);
     println!("prefix+user lenght: {}", plain.len());
     plain.extend(b";comment2=%20like%20a%20pound%20of%20bacon".to_vec());
@@ -39,7 +43,10 @@ fn is_admin(cipher: Vec<u8>, key: &Vec<u8>) -> Result<bool, Vec<u8>> {
     let decrypted = unpad_pkcs7(aes_cbc_decrypt(&cipher, key, key)).unwrap();
     let ascii = String::from_iter(decrypted.iter().map(|b| *b as char));
     println!("decrypted: {:?}", ascii);
-    if !ascii.chars().all(|b| b.is_ascii_alphanumeric() || b.is_ascii_graphic()) {
+    if !ascii
+        .chars()
+        .all(|b| b.is_ascii_alphanumeric() || b.is_ascii_graphic())
+    {
         return Err(decrypted);
     }
     Ok(ascii.contains(";admin=true;"))
@@ -54,10 +61,18 @@ fn main() {
     is_admin(cipher.clone(), &key).expect("should still work");
 
     cipher.splice(blocksize * 1..blocksize * 2, vec![0; blocksize]);
-    cipher.splice(blocksize * 2..blocksize * 3, cipher.get(0..blocksize).unwrap().to_vec());
+    cipher.splice(
+        blocksize * 2..blocksize * 3,
+        cipher.get(0..blocksize).unwrap().to_vec(),
+    );
 
     let decrypted = is_admin(cipher, &key).expect_err("unlucky, try again");
-    let recovered_key = xor(decrypted.get(0..blocksize).unwrap().to_vec(),
-                            &decrypted.get(blocksize * 2..blocksize * 3).unwrap().to_vec());
+    let recovered_key = xor(
+        decrypted.get(0..blocksize).unwrap().to_vec(),
+        &decrypted
+            .get(blocksize * 2..blocksize * 3)
+            .unwrap()
+            .to_vec(),
+    );
     assert_eq!(recovered_key, key);
 }

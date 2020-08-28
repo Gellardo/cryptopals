@@ -3,7 +3,9 @@
 
 const STARTING_STATE: [u32; 5] = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
 
-pub struct MySha1 { h: [u32; 5] }
+pub struct MySha1 {
+    h: [u32; 5],
+}
 
 impl MySha1 {
     /// Obtain only the padding for a certain input length.
@@ -45,7 +47,11 @@ impl MySha1 {
 
     /// Hash input vector with a specific starting state, assumes padding has been applied already
     pub fn hash_with_initial_state(state: [u32; 5], input: Vec<u8>) -> [u32; 5] {
-        assert_eq!(input.len() % (512 / 8), 0, "input length has to be a multiple of 512 bits");
+        assert_eq!(
+            input.len() % (512 / 8),
+            0,
+            "input length has to be a multiple of 512 bits"
+        );
         let mut sha1 = MySha1 { h: state };
         for i in (0..input.len()).step_by(64) {
             let mut block: [u8; 64] = [0; 64];
@@ -104,7 +110,7 @@ fn do_block(sha1: &mut MySha1, block: [u8; 64]) {
         if i <= 19 {
             f = (b & c) | ((!b) & d);
             k = 0x5A827999;
-            // println!("f,k: {:0x} {:0x}", f, k)
+        // println!("f,k: {:0x} {:0x}", f, k)
         } else if 20 <= i && i <= 39 {
             f = b ^ c ^ d;
             k = 0x6ED9EBA1;
@@ -116,7 +122,11 @@ fn do_block(sha1: &mut MySha1, block: [u8; 64]) {
             k = 0xCA62C1D6;
         }
 
-        let tmp = (a.rotate_left(5)).wrapping_add(f).wrapping_add(e).wrapping_add(k).wrapping_add(w[i]);
+        let tmp = (a.rotate_left(5))
+            .wrapping_add(f)
+            .wrapping_add(e)
+            .wrapping_add(k)
+            .wrapping_add(w[i]);
         e = d;
         d = c;
         c = b.rotate_left(30);
@@ -180,6 +190,7 @@ mod tests {
     fn hmac() {
         assert_eq!(
             MySha1::hmac(&b"a".to_vec(), &b"b".to_vec()),
-            MySha1::hash(MySha1::pad(b"aba".to_vec())))
+            MySha1::hash(MySha1::pad(b"aba".to_vec()))
+        )
     }
 }

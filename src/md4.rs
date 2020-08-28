@@ -1,9 +1,11 @@
 //! # Implement SHA1, trying to proxy the std one first
 //! learned: <<1 != rotate_left -> wrapping vs not
 
-const STARTING_STATE: [u32; 4] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, ]; // le
+const STARTING_STATE: [u32; 4] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]; // le
 
-pub struct MyMd4 { h: [u32; 4] }
+pub struct MyMd4 {
+    h: [u32; 4],
+}
 
 impl MyMd4 {
     /// Obtain only the padding for a certain input length.
@@ -46,7 +48,11 @@ impl MyMd4 {
     /// Hash input vector with a specific starting state, assumes padding has been applied already
     pub fn hash_with_initial_state(state: [u32; 4], input: Vec<u8>) -> [u32; 4] {
         println!("input: {}", hex::encode(&input));
-        assert_eq!(input.len() % (512 / 8), 0, "input length has to be a multiple of 512 bits");
+        assert_eq!(
+            input.len() % (512 / 8),
+            0,
+            "input length has to be a multiple of 512 bits"
+        );
         let mut sha1 = MyMd4 { h: state };
         for i in (0..input.len()).step_by(64) {
             let mut block: [u8; 64] = [0; 64];
@@ -72,23 +78,36 @@ impl MyMd4 {
 }
 
 fn do_block(md4: &mut MyMd4, block: [u8; 64]) {
-    fn f(x: u32, y: u32, z: u32) -> u32 { (x & y) | (!x & z) }
+    fn f(x: u32, y: u32, z: u32) -> u32 {
+        (x & y) | (!x & z)
+    }
 
-    fn g(x: u32, y: u32, z: u32) -> u32 { (x & y) | (x & z) | (y & z) }
+    fn g(x: u32, y: u32, z: u32) -> u32 {
+        (x & y) | (x & z) | (y & z)
+    }
 
-    fn h(x: u32, y: u32, z: u32) -> u32 { x ^ y ^ z }
-
+    fn h(x: u32, y: u32, z: u32) -> u32 {
+        x ^ y ^ z
+    }
 
     fn round_1(a: &mut u32, b: u32, c: u32, d: u32, x_k: u32, s: u32) {
         *a = a.wrapping_add(f(b, c, d)).wrapping_add(x_k).rotate_left(s);
     }
 
     fn round_2(a: &mut u32, b: u32, c: u32, d: u32, x_k: u32, s: u32) {
-        *a = a.wrapping_add(g(b, c, d)).wrapping_add(x_k).wrapping_add(0x5A827999).rotate_left(s);
+        *a = a
+            .wrapping_add(g(b, c, d))
+            .wrapping_add(x_k)
+            .wrapping_add(0x5A827999)
+            .rotate_left(s);
     }
 
     fn round_3(a: &mut u32, b: u32, c: u32, d: u32, x_k: u32, s: u32) {
-        *a = a.wrapping_add(h(b, c, d)).wrapping_add(x_k).wrapping_add(0x6ED9EBA1).rotate_left(s);
+        *a = a
+            .wrapping_add(h(b, c, d))
+            .wrapping_add(x_k)
+            .wrapping_add(0x6ED9EBA1)
+            .rotate_left(s);
     }
 
     let mut x = [0u32; 16];
@@ -173,13 +192,21 @@ mod tests {
         assert_eq!(pad[0], 0x80, "first padding byte");
         // don't really know why the padding is the wrong way around
         println!("{:?}", pad);
-        assert_eq!(*pad.chunks_exact(8).last().unwrap().last().unwrap(), 8, "last padding byte");
+        assert_eq!(
+            *pad.chunks_exact(8).last().unwrap().last().unwrap(),
+            8,
+            "last padding byte"
+        );
         assert_eq!(pad.len(), 64 - 1, "length");
 
         // additional block necessary
         let pad = MyMd4::padding(57);
         assert_eq!(pad[0], 0x80, "first padding byte");
-        assert_eq!(*pad.chunks_exact(8).last().unwrap().last().unwrap(), (57 * 8) as u8, "last padding byte");
+        assert_eq!(
+            *pad.chunks_exact(8).last().unwrap().last().unwrap(),
+            (57 * 8) as u8,
+            "last padding byte"
+        );
         assert_eq!(pad.len(), 64 * 2 - 57, "length");
     }
 

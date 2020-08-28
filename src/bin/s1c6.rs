@@ -10,6 +10,12 @@ fn main() {
     let options = break_xor_repeating_key(cipher);
 
     for (score, key, plain) in options {
-        println!("{}:{}, {:?}: {:?}", score, key.len(), String::from_utf8(key), String::from_utf8(plain))
+        println!(
+            "{}:{}, {:?}: {:?}",
+            score,
+            key.len(),
+            String::from_utf8(key),
+            String::from_utf8(plain)
+        )
     }
 }

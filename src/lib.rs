@@ -7,16 +7,16 @@ use std::collections::HashSet;
 
 use crypto::aessafe;
 use crypto::symmetriccipher::{BlockDecryptor, BlockEncryptor};
-use rand::{Rng, thread_rng};
 use rand::distributions::Standard;
+use rand::{thread_rng, Rng};
 
+pub mod md4;
 pub mod mt19937;
 pub mod sha1;
-pub mod md4;
 
 pub fn xor(s1: Vec<u8>, s2: &Vec<u8>) -> Vec<u8> {
     assert_eq!(s1.len(), s2.len(), "parameters must be the same length");
-    s1.iter().zip(s2).map(|(u1, u2)| { u1 ^ u2 }).collect()
+    s1.iter().zip(s2).map(|(u1, u2)| u1 ^ u2).collect()
 }
 
 pub fn xor_single_byte(plain: Vec<u8>, key: u8) -> Vec<u8> {
@@ -36,7 +36,7 @@ pub fn xor_repeating_key(plain: Vec<u8>, key: Vec<u8>) -> Vec<u8> {
 }
 
 pub fn u32_be_bytes(arr: &[u32]) -> Vec<u8> {
-    arr.iter().flat_map(|x|x.to_be_bytes().to_vec()).collect()
+    arr.iter().flat_map(|x| x.to_be_bytes().to_vec()).collect()
 }
 
 pub fn aes_ecb_encrypt(plain: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
@@ -112,7 +112,8 @@ pub fn ctr_keystream(key: &Vec<u8>, nonce: u64, size: usize) -> Vec<u8> {
 }
 
 pub fn aes_ctr(cipher: &Vec<u8>, key: &Vec<u8>, nonce: u64) -> Vec<u8> {
-    cipher.iter()
+    cipher
+        .iter()
         .zip(ctr_keystream(&key, nonce, cipher.len()))
         .map(|(x, y)| x ^ y)
         .collect()
@@ -128,7 +129,7 @@ pub fn break_xor_single_byte(cipher: Vec<u8>) -> Vec<(Score, u8, Vec<u8>)> {
         possible_best.push((rating, key, guess));
     }
     // reverse sorting
-    possible_best.sort_by_key(|t| { -t.0 });
+    possible_best.sort_by_key(|t| -t.0);
     possible_best.get(..3).unwrap().to_vec()
 }
 
@@ -142,7 +143,10 @@ pub fn break_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, Vec<u8>, Vec<u8>)
     for keysize in 1..40 {
         let mut sum = 0;
         for i in 0..10 {
-            sum += hamming_distance(cipher[i * keysize..(i + 1) * keysize].to_vec(), cipher[(i + 1) * keysize..(i + 2) * keysize].to_vec());
+            sum += hamming_distance(
+                cipher[i * keysize..(i + 1) * keysize].to_vec(),
+                cipher[(i + 1) * keysize..(i + 2) * keysize].to_vec(),
+            );
         }
         normalized.push((sum as f32 / 10f32 / keysize as f32, keysize));
     }
@@ -159,7 +163,10 @@ pub fn break_xor_repeating_key(cipher: Vec<u8>) -> Vec<(Score, Vec<u8>, Vec<u8>)
 }
 
 /// Break repeating key xor with a known keysize and return the best result
-pub fn break_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
+pub fn break_xor_repeating_key_size(
+    cipher: &Vec<u8>,
+    keysize: usize,
+) -> Vec<(Score, Vec<u8>, Vec<u8>)> {
     let mut best_key = Vec::new();
     for i in 0..keysize {
         let mut ciphertext_i = Vec::new();
@@ -180,7 +187,10 @@ pub fn break_xor_repeating_key_size(cipher: &Vec<u8>, keysize: usize) -> Vec<(Sc
 ///   - blackbox(text) = enc(text||secret)
 ///   - blackbox(text) stays the same for consecutive calls
 ///   - blackbox uses pkcs7 padding for the plaintext (for the stopping condition)
-pub fn extract_fixed_suffix(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>, blocksize: usize) -> Vec<u8> {
+pub fn extract_fixed_suffix(
+    blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>,
+    blocksize: usize,
+) -> Vec<u8> {
     let secret_len = blackbox(vec![]).len();
     let mut found = Vec::new();
     for i in 0..secret_len {
@@ -194,7 +204,9 @@ pub fn extract_fixed_suffix(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>, blocksize
             // compare only useful block = the one containing the border between prefix and secret
             // previous blocks are equal due to construction, blocks after contain an additional copy of secret
             let working_block = (found_blocks * 16)..((found_blocks + 1) * 16);
-            if blackbox(prefix.clone()).get(working_block.clone()).unwrap() == to_match.get(working_block).unwrap() {
+            if blackbox(prefix.clone()).get(working_block.clone()).unwrap()
+                == to_match.get(working_block).unwrap()
+            {
                 info!("@{} found: {}", i, c);
                 found.push(c);
                 break;
@@ -209,7 +221,11 @@ pub fn extract_fixed_suffix(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>, blocksize
         debug!("intermediate: {:?}", found);
         if found.len() == found_len {
             info!("Found {} - 1 secret bytes", found.len());
-            assert_eq!(found.pop().unwrap(), 1u8, "If this uses pkcs7 padding, we expect a 1");
+            assert_eq!(
+                found.pop().unwrap(),
+                1u8,
+                "If this uses pkcs7 padding, we expect a 1"
+            );
             break;
         }
     }
@@ -226,11 +242,14 @@ pub type Score = i32;
 pub fn rate_plain(s: &Vec<u8>) -> Score {
     let mut res: Score = 0;
     for c in s {
-        if *c >= 'a' as u8 && *c <= 'z' as u8 { // most text is lowercase
+        if *c >= 'a' as u8 && *c <= 'z' as u8 {
+            // most text is lowercase
             res += 7;
-        } else if *c == ' ' as u8 || *c >= 'A' as u8 && *c <= 'Z' as u8 { // a lot of spaces and uppercase
+        } else if *c == ' ' as u8 || *c >= 'A' as u8 && *c <= 'Z' as u8 {
+            // a lot of spaces and uppercase
             res += 5;
-        } else if *c == '\'' as u8 || *c == '\n' as u8 || *c == '.' as u8 { // few special chars
+        } else if *c == '\'' as u8 || *c == '\n' as u8 || *c == '.' as u8 {
+            // few special chars
             res += 2;
         } else if (*c as char).is_whitespace() {
             res += 1;
@@ -270,11 +289,19 @@ pub fn pad_pkcs7(mut block: Vec<u8>, blocksize: u8) -> Vec<u8> {
 /// ```
 pub fn unpad_pkcs7(mut block: Vec<u8>) -> Result<Vec<u8>, CryptoError> {
     let to_remove = block.last().unwrap().to_owned();
-    if to_remove == 0 { return Err(CryptoError::Pkcs7Padding { padding: to_remove, last_removed: None }); }
+    if to_remove == 0 {
+        return Err(CryptoError::Pkcs7Padding {
+            padding: to_remove,
+            last_removed: None,
+        });
+    }
     for _ in 0..to_remove {
         let popped = block.pop();
         if popped != Some(to_remove) {
-            return Err(CryptoError::Pkcs7Padding { padding: to_remove, last_removed: popped });
+            return Err(CryptoError::Pkcs7Padding {
+                padding: to_remove,
+                last_removed: popped,
+            });
         }
     }
     Ok(block)
@@ -282,14 +309,21 @@ pub fn unpad_pkcs7(mut block: Vec<u8>) -> Result<Vec<u8>, CryptoError> {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum CryptoError {
-    Pkcs7Padding { padding: u8, last_removed: Option<u8> },
+    Pkcs7Padding {
+        padding: u8,
+        last_removed: Option<u8>,
+    },
 }
 
 /// Prepend a random, random length prefix
 pub fn prepend_random_prefix(data: Vec<u8>) -> Vec<u8> {
     let mut rng = thread_rng();
     let mut data_ext = Vec::new();
-    data_ext.extend(rng.sample_iter(Standard).take(rng.gen_range(1, 32)).collect::<Vec<u8>>());
+    data_ext.extend(
+        rng.sample_iter(Standard)
+            .take(rng.gen_range(1, 32))
+            .collect::<Vec<u8>>(),
+    );
     data_ext.extend(data);
     data_ext
 }
@@ -329,7 +363,10 @@ fn _compare_letter_frequency() {
 
 fn hamming_distance(s1: Vec<u8>, s2: Vec<u8>) -> u32 {
     assert_eq!(s1.len(), s2.len());
-    s1.iter().zip(s2).map(|(c1, c2)| (c1 ^ c2).count_ones()).sum()
+    s1.iter()
+        .zip(s2)
+        .map(|(c1, c2)| (c1 ^ c2).count_ones())
+        .sum()
 }
 
 pub fn random_128_bit() -> Vec<u8> {
@@ -349,11 +386,14 @@ pub fn compare(a: &Vec<u8>, b: &Vec<u8>) -> bool {
         }
     }
     if a.len() < b.len() {
-        println!("missmatch length: a ({}) shorter than b ({})", a.len(), b.len())
+        println!(
+            "missmatch length: a ({}) shorter than b ({})",
+            a.len(),
+            b.len()
+        )
     }
     a.len() == b.len()
 }
-
 
 /// Tries progressively longer plain texts, until there is a new block added.
 /// The difference between the previous and the new length is the blocksize.
@@ -377,7 +417,9 @@ pub fn detect_ecb(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>, blocksize: usize) -
         let block = cipher.get(i..i + 16);
         match block {
             Some(b) => {
-                if blocks.contains(&b) { return true; };
+                if blocks.contains(&b) {
+                    return true;
+                };
                 blocks.insert(b);
             }
             None => {}
@@ -386,14 +428,16 @@ pub fn detect_ecb(blackbox: &mut dyn Fn(Vec<u8>) -> Vec<u8>, blocksize: usize) -
     false
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn hamming_dist() {
-        assert_eq!(hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()), 37);
+        assert_eq!(
+            hamming_distance(b"this is a test".to_vec(), b"wokka wokka!!!".to_vec()),
+            37
+        );
     }
 
     #[test]
@@ -403,7 +447,8 @@ mod tests {
         let cipher = aes_ecb_encrypt(&plain, &key);
         assert_eq!(
             cipher,
-            hex::decode("d1aa4f6578926542fbb6dd876cd20508d1aa4f6578926542fbb6dd876cd20508").unwrap(),
+            hex::decode("d1aa4f6578926542fbb6dd876cd20508d1aa4f6578926542fbb6dd876cd20508")
+                .unwrap(),
             "cipher"
         );
         assert_eq!(aes_ecb_decrypt(&cipher, &key), plain, "plain");
@@ -417,18 +462,18 @@ mod tests {
         let cipher = aes_cbc_encrypt(&plain, &key, &iv.clone());
         assert_eq!(
             cipher,
-            hex::decode("d1aa4f6578926542fbb6dd876cd20508eaed974f65b7a3a9240d36daef1a31ea").unwrap(),
+            hex::decode("d1aa4f6578926542fbb6dd876cd20508eaed974f65b7a3a9240d36daef1a31ea")
+                .unwrap(),
             "cipher"
         );
-        assert_eq!(
-            aes_cbc_decrypt(&cipher, &key, &iv),
-            plain,
-            "plain"
-        );
+        assert_eq!(aes_cbc_decrypt(&cipher, &key, &iv), plain, "plain");
     }
 
     #[test]
-    fn converting_u32_to_vec(){
-        assert_eq!(u32_be_bytes(&[0x01234567, 0x89abcdef]), vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef])
+    fn converting_u32_to_vec() {
+        assert_eq!(
+            u32_be_bytes(&[0x01234567, 0x89abcdef]),
+            vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
+        )
     }
 }

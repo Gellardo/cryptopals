@@ -49,8 +49,8 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 
-use cyptopals::{random_128_bit, u32_be_bytes};
 use cyptopals::sha1::MySha1;
+use cyptopals::{random_128_bit, u32_be_bytes};
 
 fn bruteforce(mac_len: usize, call: &mut (dyn Fn(&Vec<u8>) -> bool + Sync)) -> Vec<u8> {
     let mut mac = vec![0u8; mac_len];
@@ -64,17 +64,24 @@ fn bruteforce(mac_len: usize, call: &mut (dyn Fn(&Vec<u8>) -> bool + Sync)) -> V
     mac
 }
 
-fn time_options(call: &mut (dyn Fn(&Vec<u8>) -> bool + Sync), mac: &mut Vec<u8>, i: usize) -> Vec<(u8, u32)> {
-    (0..u8::MAX).into_par_iter().map(|possible_byte| {
-        let mut par_mac = mac.clone();
-        par_mac[i] = possible_byte;
-        let start = Instant::now();
-        if call(&par_mac) {
-            return (possible_byte, u32::MAX);
-        }
-        let duration = start.elapsed();
-        (possible_byte, duration.as_millis() as u32)
-    }).collect()
+fn time_options(
+    call: &mut (dyn Fn(&Vec<u8>) -> bool + Sync),
+    mac: &mut Vec<u8>,
+    i: usize,
+) -> Vec<(u8, u32)> {
+    (0..u8::MAX)
+        .into_par_iter()
+        .map(|possible_byte| {
+            let mut par_mac = mac.clone();
+            par_mac[i] = possible_byte;
+            let start = Instant::now();
+            if call(&par_mac) {
+                return (possible_byte, u32::MAX);
+            }
+            let duration = start.elapsed();
+            (possible_byte, duration.as_millis() as u32)
+        })
+        .collect()
 }
 
 /// just take the smallest duration for now
@@ -83,7 +90,9 @@ fn select_best_option(options: Vec<(u8, u32)>) -> Option<u8> {
 }
 
 fn insecure_equals(a: &Vec<u8>, b: &Vec<u8>) -> bool {
-    if a.len() != b.len() { return false; }
+    if a.len() != b.len() {
+        return false;
+    }
     for i in 0..a.len() {
         sleep(Duration::from_millis(50));
         if a[i] != b[i] {
@@ -96,20 +105,24 @@ fn insecure_equals(a: &Vec<u8>, b: &Vec<u8>) -> bool {
 fn main() {
     // give rayon 256 threads, one for each option of u8.
     // This is not a problem, since the majority of the time is spent waiting for sleeps to finish
-    ThreadPoolBuilder::new().num_threads(256).build_global().expect("should succeed");
+    ThreadPoolBuilder::new()
+        .num_threads(256)
+        .build_global()
+        .expect("should succeed");
 
     let key = random_128_bit();
     let data = b"malicious file".to_vec();
     let correct_mac = u32_be_bytes(&MySha1::hmac(&key, &data));
     println!("target: {:?}", correct_mac);
     let start = Instant::now();
-    let bf_mac = bruteforce(20, &mut |mac: &Vec<u8>| insecure_equals(&u32_be_bytes(&MySha1::hmac(&key, &data)), mac));
+    let bf_mac = bruteforce(20, &mut |mac: &Vec<u8>| {
+        insecure_equals(&u32_be_bytes(&MySha1::hmac(&key, &data)), mac)
+    });
     println!("took: {:?}", start.elapsed());
     println!("should be: {:?}", correct_mac);
     println!("was      : {:?}", bf_mac);
     assert_eq!(bf_mac, correct_mac)
 }
-
 
 #[cfg(test)]
 mod test {
@@ -117,8 +130,11 @@ mod test {
 
     #[test]
     fn test_with_very_short_mac() {
-        ThreadPoolBuilder::new().num_threads(256).build_global().expect("should succeed");
-        let test_mac = vec!(5u8; 3);
+        ThreadPoolBuilder::new()
+            .num_threads(256)
+            .build_global()
+            .expect("should succeed");
+        let test_mac = vec![5u8; 3];
         let bf_mac = bruteforce(3, &mut |mac: &Vec<u8>| insecure_equals(&test_mac, mac));
         assert_eq!(bf_mac, test_mac)
     }

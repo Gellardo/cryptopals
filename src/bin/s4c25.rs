@@ -26,7 +26,10 @@ fn edit(cipher: &Vec<u8>, key: &Vec<u8>, offset: usize, new: &Vec<u8>) -> Vec<u8
 /// So if we know the new ciphertext byte for that position, we can obtain the keystream byte using xor.
 /// Rinse and repeat until every byte is known.
 /// Could be sped up if we use larger sections of known plaintext to obtain larger keystream sections.
-fn break_random_rw_ctr(mut cipher: Vec<u8>, apicall: &mut dyn Fn(&Vec<u8>, usize, &Vec<u8>) -> Vec<u8>) -> Vec<u8> {
+fn break_random_rw_ctr(
+    mut cipher: Vec<u8>,
+    apicall: &mut dyn Fn(&Vec<u8>, usize, &Vec<u8>) -> Vec<u8>,
+) -> Vec<u8> {
     println!("{:?}", cipher.get(0..10));
     let len = cipher.len();
     let mut plain = Vec::new();
@@ -53,6 +56,6 @@ fn main() {
     let plain = aes_ecb_decrypt(&cipher, b"YELLOW SUBMARINE".to_vec().as_ref());
     let key = random_128_bit();
     let cipher = aes_ctr(&plain, &key, 0);
-    let mut api = |cipher: &Vec<u8>, offset: usize, new: &Vec<u8>| { edit(cipher, &key, offset, new) };
+    let mut api = |cipher: &Vec<u8>, offset: usize, new: &Vec<u8>| edit(cipher, &key, offset, new);
     assert_eq!(break_random_rw_ctr(cipher, &mut api), plain);
 }

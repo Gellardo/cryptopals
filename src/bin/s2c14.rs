@@ -1,10 +1,13 @@
-extern crate rand;
-extern crate log;
 extern crate env_logger;
+extern crate log;
+extern crate rand;
 
 use std::collections::HashSet;
 
-use cyptopals::{aes_ecb_encrypt, compare, detect_blocksize, detect_ecb, pad_pkcs7, random_128_bit, extract_fixed_suffix};
+use cyptopals::{
+    aes_ecb_encrypt, compare, detect_blocksize, detect_ecb, extract_fixed_suffix, pad_pkcs7,
+    random_128_bit,
+};
 
 /// Find a block in a ciphertext and return the starting offset
 fn find_block(cipher: &Vec<u8>, block: &Vec<u8>) -> Option<usize> {
@@ -32,7 +35,9 @@ fn find_first_duplicate_block(cipher: &Vec<u8>) -> Option<Vec<u8>> {
         let block = cipher.get(i..i + 16);
         match block {
             Some(b) => {
-                if blocks.contains(&b) { return Some(b.to_vec()); };
+                if blocks.contains(&b) {
+                    return Some(b.to_vec());
+                };
                 blocks.insert(b);
             }
             None => {}
@@ -40,7 +45,6 @@ fn find_first_duplicate_block(cipher: &Vec<u8>) -> Option<Vec<u8>> {
     }
     None
 }
-
 
 /// Byte at a time ecb decryption with a random (length and content) prefix
 fn main() {
@@ -63,18 +67,20 @@ fn main() {
 
     let blocksize = detect_blocksize(&mut encrypt_blackbox).unwrap();
     println!("Cipher has blocksize {} bytes", blocksize);
-    println!("Cipher is using ecb: {}", detect_ecb(&mut encrypt_blackbox, blocksize));
+    println!(
+        "Cipher is using ecb: {}",
+        detect_ecb(&mut encrypt_blackbox, blocksize)
+    );
 
     // Use longer pattern to reduce probability of accidental matches in wrapped_blackbox
     // if we use AAAA, any random A at the end of the prefix might trick our detection later
-    let plain_known = vec![0x41,0x42,0x43,0x44].repeat(4);
+    let plain_known = vec![0x41, 0x42, 0x43, 0x44].repeat(4);
     let mut known_block = find_first_duplicate_block(&encrypt_blackbox(plain_known.repeat(2)));
     while known_block.is_none() {
         known_block = find_first_duplicate_block(&encrypt_blackbox(plain_known.repeat(2)));
     }
     let known_block = known_block.unwrap();
     println!("found marker block");
-
 
     // retry encryption (1/16 chance the random prefix fits) until we find the `known_block`.
     // We remove everything up to and including that block.
@@ -88,15 +94,20 @@ fn main() {
             if position.is_some() {
                 let cipher = potential_cipher.split_off(position.unwrap() + blocksize);
                 // checking that removal works correctly
-//                println!("removed {:?}", potential_cipher);
-//                println!("known   {:?}", known_block);
-//                println!("ret {:?}", cipher);
+                //                println!("removed {:?}", potential_cipher);
+                //                println!("known   {:?}", known_block);
+                //                println!("ret {:?}", cipher);
                 return cipher;
             }
         }
     };
 
     let decrypted_secret = extract_fixed_suffix(&mut wrapped_blackbox, blocksize);
-    println!("decrypted secret matches: {} (len: {}, {})", decrypted_secret == secret_data, decrypted_secret.len(), secret_data.len());
+    println!(
+        "decrypted secret matches: {} (len: {}, {})",
+        decrypted_secret == secret_data,
+        decrypted_secret.len(),
+        secret_data.len()
+    );
     assert!(compare(&decrypted_secret, &secret_data));
 }

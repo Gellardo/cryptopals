@@ -66,10 +66,13 @@ fn main() {
     }
 
     for i in 0..10 {
-        let decrypted = ciphers.get(i).unwrap().iter()
+        let decrypted = ciphers
+            .get(i)
+            .unwrap()
+            .iter()
             .zip(keystream.iter())
             .map(|(x, &y)| (x ^ y) as char)
             .collect::<String>();
-        println!("{}: {}",i, decrypted);
+        println!("{}: {}", i, decrypted);
     }
 }

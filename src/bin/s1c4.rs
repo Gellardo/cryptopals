@@ -5,7 +5,8 @@ use cyptopals::break_xor_single_byte;
 /// Find the ciphertext that is probably encrypted with single byte xor
 fn main() {
     let line = fs::read_to_string("./files/find_single_byte_xor.txt").unwrap();
-    let lines: Vec<Vec<u8>> = line.split("\n")
+    let lines: Vec<Vec<u8>> = line
+        .split("\n")
         .filter(|x| x.len() > 2)
         .map(|x| x.trim())
         .map(|x| hex::decode(x).unwrap())
