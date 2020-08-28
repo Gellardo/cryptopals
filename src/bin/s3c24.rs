@@ -43,6 +43,7 @@ fn password_reset_token() {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    password_reset_token();
     recover_key();
     Ok(())
 }
