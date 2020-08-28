@@ -29,91 +29,63 @@
 //! s* (+s) + s*2 (+s) + ... + s*n
 //! (n-1) * s + s*n*(n+1)/2
 //! ```
+//!
+//! So I looked at how to do the compares/"calls to the webserver" in parallel myself and... saw no simple way to do so.
+//! Instead, I used the `rayon` library to allow for really easy parallelism.
+//! The only change required is to go from a `for`-loop to `iter()` based code and replace `iter` with `par_iter`.
+//! Done... well almost, now increase the thread pool size to 256, since none of the threads will do significant work.
+//! More makes no sense since there are only 256 possible values to explore.
+//! And lo and behold, the results were as expected:
+//!
+//! | version | runtime |
+//! |---------|---------|
+//! | v1 (no rayon) | > 40 min |
+//! | rayon defaults | ~ 6 min |
+//! | rayon 256 | ~ 13 sec |
 
-use std::ops::Sub;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
+
+use cyptopals::{random_128_bit, u32_be_bytes};
 use cyptopals::sha1::MySha1;
-use cyptopals::u32_be_bytes;
 
-fn bruteforce_rec(data: &Vec<u8>, call: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool) -> Vec<u8> {
-    let mut mac = vec![0u8; 5 * 4];
-    rec(0, &mut mac, [0, 0], data, call);
-    mac
-}
-
-fn rec(pos: usize, mac: &mut Vec<u8>, durations: [u128; 2], data: &Vec<u8>, call: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool) -> bool {
-    for i in 0..5 {
-        let mut byte = 0u8;
-        let mut max_duration = Duration::from_secs(0);
-        for possible_byte in u8::MIN..=u8::MAX {
-            mac[pos] = possible_byte;
-            let start = Instant::now();
-            if call(data, &mac) {
-                return true;
-            }
-            let duration = start.elapsed();
-            if duration > max_duration {
-                println!("{}: better {:?}, {}", pos, duration, possible_byte);
-                byte = possible_byte;
-
-                // quick continue if we found it
-                // let diff = duration.sub(max_duration).as_millis();
-                // if diff > 10 && diff < 25 && max_duration.as_millis() > 0{
-                //     break
-                // }
-                max_duration = duration;
-            }
-        }
-        println!("{}: final {}", pos, byte);
-        mac[pos] = byte;
-        // slowdown over 2 positions should definitely shrink
-        if max_duration.as_millis() - durations[0] < 30 {
-            return false;
-        }
-        let mut new_durations = [0; 2];
-        new_durations[0] = durations[1];
-        new_durations[1] = max_duration.as_millis();
-        if rec(pos + 1, mac, new_durations, data, call) { return true; }
-    }
-    return false;
-}
-
-fn bruteforce(data: &Vec<u8>, call: &mut dyn Fn(&Vec<u8>, &Vec<u8>) -> bool) -> Vec<u8> {
-    let mut mac = vec![0u8; 5 * 4];
-    for i in 0..mac.len() {
-        let mut max_duration = Duration::from_secs(0);
-        let mut byte = 0u8;
-        for possible_byte in u8::MIN..=u8::MAX {
-            mac[i] = possible_byte;
-            let start = Instant::now();
-            if call(data, &mac) {
-                return mac;
-            }
-            let duration = start.elapsed();
-            if duration > max_duration {
-                println!("{}: better {:?}, {}", i, duration, possible_byte);
-                byte = possible_byte;
-
-                // quick continue if we found it
-                // let diff = duration.sub(max_duration).as_millis();
-                // if diff > 10 && diff < 25 && max_duration.as_millis() > 0{
-                //     break
-                // }
-                max_duration = duration;
-            }
-        }
-        println!("{}: final {}", i, byte);
+fn bruteforce(mac_len: usize, call: &mut (dyn Fn(&Vec<u8>) -> bool + Sync)) -> Vec<u8> {
+    let mut mac = vec![0u8; mac_len];
+    for i in 0..mac_len {
+        let start = Instant::now();
+        let options = time_options(call, &mut mac, i);
+        let byte = select_best_option(options).expect("there has to be one option");
+        println!("{}: final {} in {:?}", i, byte, start.elapsed());
         mac[i] = byte;
     }
     mac
 }
 
+fn time_options(call: &mut (dyn Fn(&Vec<u8>) -> bool + Sync), mac: &mut Vec<u8>, i: usize) -> Vec<(u8, u32)> {
+    (0..u8::MAX).into_par_iter().map(|possible_byte| {
+        let mut par_mac = mac.clone();
+        par_mac[i] = possible_byte;
+        let start = Instant::now();
+        if call(&par_mac) {
+            return (possible_byte, u32::MAX);
+        }
+        let duration = start.elapsed();
+        (possible_byte, duration.as_millis() as u32)
+    }).collect()
+}
+
+/// just take the smallest duration for now
+fn select_best_option(options: Vec<(u8, u32)>) -> Option<u8> {
+    options.iter().max_by(|f, s| f.1.cmp(&s.1)).map(|o| o.0)
+}
+
 fn insecure_equals(a: &Vec<u8>, b: &Vec<u8>) -> bool {
     if a.len() != b.len() { return false; }
     for i in 0..a.len() {
-        sleep(Duration::from_millis(25));
+        sleep(Duration::from_millis(50));
         if a[i] != b[i] {
             return false;
         }
@@ -122,15 +94,20 @@ fn insecure_equals(a: &Vec<u8>, b: &Vec<u8>) -> bool {
 }
 
 fn main() {
-    let key = b"abc".to_vec();
+    // give rayon 256 threads, one for each option of u8.
+    // This is not a problem, since the majority of the time is spent waiting for sleeps to finish
+    ThreadPoolBuilder::new().num_threads(256).build_global().expect("should succeed");
+
+    let key = random_128_bit();
     let data = b"malicious file".to_vec();
+    let correct_mac = u32_be_bytes(&MySha1::hmac(&key, &data));
+    println!("target: {:?}", correct_mac);
     let start = Instant::now();
-    let bf_mac = bruteforce_rec(
-        &data,
-        &mut |data, mac: &Vec<u8>| insecure_equals(&u32_be_bytes(&MySha1::hmac(&key, data)), mac));
+    let bf_mac = bruteforce(20, &mut |mac: &Vec<u8>| insecure_equals(&u32_be_bytes(&MySha1::hmac(&key, &data)), mac));
     println!("took: {:?}", start.elapsed());
-    println!("should be: {:?}", u32_be_bytes(&MySha1::hmac(&key, &data)));
+    println!("should be: {:?}", correct_mac);
     println!("was      : {:?}", bf_mac);
+    assert_eq!(bf_mac, correct_mac)
 }
 
 
@@ -139,7 +116,10 @@ mod test {
     use super::*;
 
     #[test]
-    fn placeholder() {
-        assert!(true)
+    fn test_with_very_short_mac() {
+        ThreadPoolBuilder::new().num_threads(256).build_global().expect("should succeed");
+        let test_mac = vec!(5u8; 3);
+        let bf_mac = bruteforce(3, &mut |mac: &Vec<u8>| insecure_equals(&test_mac, mac));
+        assert_eq!(bf_mac, test_mac)
     }
 }
