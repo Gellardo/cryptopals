@@ -129,6 +129,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[ignore] // can and does break regularly
     fn test_with_very_short_mac() {
         ThreadPoolBuilder::new()
             .num_threads(256)
