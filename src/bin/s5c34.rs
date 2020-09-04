@@ -42,6 +42,26 @@ fn main() {
     let (tx_alice, rx_alice): (Sender<Messages>, Receiver<Messages>) = mpsc::channel();
     let (tx_bot, rx_bot): (Sender<Messages>, Receiver<Messages>) = mpsc::channel();
 
+    // Setup Malroy in the middle
+    // a -> tx_bot -> rx_bot -> b
+    // a <- rx_alice <- tx_alice <- b
+    let (tx_m_alice, rx_m_alice): (Sender<Messages>, Receiver<Messages>) = mpsc::channel();
+    let (tx_m_bot, rx_m_bot): (Sender<Messages>, Receiver<Messages>) = mpsc::channel();
+    // rewire(/-name) receiving ends so that the new m-channels are put into the second half
+    // a -> tx_bot -> rx_m_bot -> m -> tx_m_bot -(new channel)-> rx_bot -> b
+    // a <- rx_alice <-(new channel)- tx_m_alice <- rx_m_alice <- tx_alice <- b
+    let (rx_bot, rx_m_bot) = (rx_m_bot, rx_bot);
+    let (rx_alice, rx_m_alice) = (rx_m_alice, rx_alice);
+
+    let malroy = thread::spawn(move || {
+        tx_m_bot.send(rx_m_bot.recv().unwrap());
+        tx_m_alice.send(rx_m_alice.recv().unwrap());
+        //DH finished
+
+        tx_m_bot.send(rx_m_bot.recv().unwrap());
+        tx_m_alice.send(rx_m_alice.recv().unwrap());
+    });
+
     let alice = thread::spawn(move || {
         let tx = tx_bot;
         let rx = rx_alice;
@@ -112,4 +132,5 @@ fn main() {
     });
     alice.join().expect("alice finishes");
     bot.join().expect("bot finishes");
+    malroy.join().expect("malroy finishes")
 }
