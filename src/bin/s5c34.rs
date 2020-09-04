@@ -1,7 +1,13 @@
 //! # Implement DH MITM key fixing
+//! Basically, put malroy into the middle, and let him do 2 DH exchanges:
+//! One with A and one with B, both yielding a secret key for that segment of the transmission
+//!
+//! Now he only has to act as a proxy:
+//! 1. decrypt the messages with the correct key when receiving
+//! 2. re-encrypt them with the other key before forwarding them to the other side.
 
 use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, RecvError, Sender};
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 use num_bigint::BigUint;
@@ -54,12 +60,68 @@ fn main() {
     let (rx_alice, rx_m_alice) = (rx_m_alice, rx_alice);
 
     let malroy = thread::spawn(move || {
-        tx_m_bot.send(rx_m_bot.recv().unwrap());
-        tx_m_alice.send(rx_m_alice.recv().unwrap());
+        let (dh, s_a) = match rx_m_bot.recv().unwrap() {
+            Messages::DhSetup { p, g, a_pub } => {
+                let dh = begin_dh(p, g);
+                let s_a = dh.gen_shared(&a_pub);
+                (dh, s_a)
+            }
+            _ => panic!("never"),
+        };
+        tx_m_bot
+            .send(DhSetup {
+                p: dh.p.clone(),
+                g: dh.g.clone(),
+                a_pub: dh.gen_pub(),
+            })
+            .unwrap();
+        tx_m_alice
+            .send(DhFinish {
+                b_pub: dh.gen_pub(),
+            })
+            .unwrap();
+
+        let s_b = match rx_m_alice.recv().unwrap() {
+            DhFinish { b_pub } => dh.gen_shared(&b_pub),
+            _ => panic!("never"),
+        };
+        let s_a = u32_be_bytes(&MySha1::hash(s_a.to_bytes_be())[0..4]);
+        let s_b = u32_be_bytes(&MySha1::hash(s_b.to_bytes_be())[0..4]);
+        println!("m: s_alice={:?}", s_a);
+        println!("m: s_bot  ={:?}", s_b);
         //DH finished
 
-        tx_m_bot.send(rx_m_bot.recv().unwrap());
-        tx_m_alice.send(rx_m_alice.recv().unwrap());
+        let message_alice = match rx_m_bot.recv().unwrap() {
+            Messages::EncryptedMessage { cipher, iv } => {
+                let plain = decrypt(&cipher, &s_a, &iv);
+                plain
+            }
+            _ => panic!("never"),
+        };
+        println!("m<-: {:?} (a->b)", message_alice);
+        let iv = random_128_bit();
+        tx_m_bot
+            .send(EncryptedMessage {
+                cipher: encrypt(message_alice, &s_b, &iv),
+                iv,
+            })
+            .unwrap();
+
+        let message_bot = match rx_m_alice.recv().unwrap() {
+            Messages::EncryptedMessage { cipher, iv } => {
+                let plain = decrypt(&cipher, &s_b, &iv);
+                plain
+            }
+            _ => panic!("never"),
+        };
+        println!("m<-: {:?} (b->a)", message_bot);
+        let iv = random_128_bit();
+        tx_m_alice
+            .send(EncryptedMessage {
+                cipher: encrypt(message_bot, &s_a, &iv),
+                iv,
+            })
+            .unwrap();
     });
 
     let alice = thread::spawn(move || {
@@ -84,16 +146,13 @@ fn main() {
 
         let iv = random_128_bit();
         let cipher = encrypt(b"alice message".to_vec(), &secret, &iv);
-        tx.send(EncryptedMessage { cipher, iv });
+        tx.send(EncryptedMessage { cipher, iv }).unwrap();
 
         let message = match rx.recv().unwrap() {
-            Messages::EncryptedMessage { cipher, iv } => {
-                let plain = decrypt(&cipher, &secret, &iv);
-                println!("a<-: {:?}", plain);
-                plain
-            }
+            Messages::EncryptedMessage { cipher, iv } => decrypt(&cipher, &secret, &iv),
             _ => panic!("oh no encrypted bot"),
         };
+        println!("a<-: {:?}", message);
         println!("alice finished");
     });
 
@@ -114,13 +173,10 @@ fn main() {
         tx.send(DhFinish { b_pub }).unwrap();
 
         let message = match rx.recv().unwrap() {
-            Messages::EncryptedMessage { cipher, iv } => {
-                let plain = decrypt(&cipher, &secret, &iv);
-                println!("b<- : {:?}", plain);
-                plain
-            }
+            Messages::EncryptedMessage { cipher, iv } => decrypt(&cipher, &secret, &iv),
             _ => panic!("oh no encrypted alice"),
         };
+        println!("b<-: {:?}", message);
 
         let iv = random_128_bit();
         tx.send(EncryptedMessage {
