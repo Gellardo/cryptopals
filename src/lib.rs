@@ -65,7 +65,9 @@ pub fn aes_ecb_decrypt(cipher: &Vec<u8>, key: &Vec<u8>) -> Vec<u8> {
 }
 
 pub fn aes_cbc_encrypt(plain: &Vec<u8>, key: &Vec<u8>, iv: &Vec<u8>) -> Vec<u8> {
-    assert!(plain.len() % 16 == 0 && key.len() == 16 && iv.len() == 16);
+    assert!(plain.len() % 16 == 0);
+    assert!(key.len() == 16);
+    assert!(iv.len() == 16);
     let aes_enc = aessafe::AesSafe128Encryptor::new(key);
     let mut cipher = Vec::new();
     let mut bind_block: Vec<u8>;

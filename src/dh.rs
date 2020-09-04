@@ -4,8 +4,8 @@ use num_bigint::{BigUint, RandBigInt};
 use rand::thread_rng;
 
 pub struct DhSession {
-    p: BigUint,
-    g: BigUint,
+    pub p: BigUint,
+    pub g: BigUint,
     a: BigUint,
 }
 
