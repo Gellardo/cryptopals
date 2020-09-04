@@ -10,6 +10,7 @@ use crypto::symmetriccipher::{BlockDecryptor, BlockEncryptor};
 use rand::distributions::Standard;
 use rand::{thread_rng, Rng};
 
+pub mod dh;
 pub mod md4;
 pub mod mt19937;
 pub mod sha1;
