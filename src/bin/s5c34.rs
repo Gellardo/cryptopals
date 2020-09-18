@@ -73,7 +73,11 @@ fn main() {
 
     let malroy = thread::spawn(move || {
         let dh = match rx_m_bot.recv().unwrap() {
-            Messages::DhSetup { p, g, a_pub } => begin_dh(p, g),
+            Messages::DhSetup {
+                p,
+                g,
+                a_pub: _a_pub,
+            } => begin_dh(p, g),
             _ => panic!("never"),
         };
         tx_m_bot
