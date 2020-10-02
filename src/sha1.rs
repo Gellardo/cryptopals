@@ -45,6 +45,11 @@ impl MySha1 {
         MySha1::hash_with_initial_state(STARTING_STATE, input)
     }
 
+    /// Hash input vector, padding is handled
+    pub fn hash_padded(input: Vec<u8>) -> [u32; 5] {
+        MySha1::hash_with_initial_state(STARTING_STATE, MySha1::pad(input))
+    }
+
     /// Hash input vector with a specific starting state, assumes padding has been applied already
     pub fn hash_with_initial_state(state: [u32; 5], input: Vec<u8>) -> [u32; 5] {
         assert_eq!(

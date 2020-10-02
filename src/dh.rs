@@ -31,9 +31,13 @@ pub fn begin_dh_nist() -> DhSession {
 }
 
 pub fn begin_dh(p: BigUint, g: BigUint) -> DhSession {
-    let mut rng = thread_rng();
-    let a: BigUint = rng.gen_biguint(p.bits()).rem(&p);
+    let a: BigUint = gen_random(&p);
     DhSession { p, g, a }
+}
+
+pub fn gen_random(p: &BigUint) -> BigUint {
+    let mut rng = thread_rng();
+    rng.gen_biguint(p.bits()).rem(p)
 }
 
 trait PowMod {
