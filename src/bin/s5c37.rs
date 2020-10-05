@@ -55,3 +55,13 @@ fn main() {
     c.join().expect("client finishes");
     s.join().expect("server finishes");
 }
+
+#[cfg(test)]
+mod test {
+    use super::main;
+
+    #[test]
+    fn it_works() {
+        main()
+    }
+}

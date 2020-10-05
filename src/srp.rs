@@ -126,7 +126,8 @@ pub fn client_ext(
             if auth {
                 println!("c: success")
             } else {
-                println!("c: auth fail")
+                println!("c: auth fail");
+                panic!("the authentication failed")
             }
         }
         _ => panic!("never"),
