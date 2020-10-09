@@ -1,6 +1,19 @@
 //! # Breadk SRP with different A values
 //! let's try using 0, n, n*2 etc for A
 
+/**
+@startuml
+ref over c, s: agree on N,g,k, I,P
+s -> s: salt\n(x=Sha(salt|P))\nv=g**x % N
+c -> s: (I, A=g**a % N)
+s -> c: (salt, B=k*v + g**b % N)
+ref over c, s: u = Sha(A|B)
+c -> c: x = Sha(salt|P)\nS=(B - k * g**x) * * (a+u*x) %N\n K = Sha(S)
+c -> s: hmac(K,salt)
+s -> s: S = (A * v**u) * * b %N\n K = Sha(S)
+s -> c: Bool if hmacs match
+@enduml
+*/
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
