@@ -13,6 +13,8 @@ use rand::{thread_rng, Rng};
 pub mod dh;
 pub mod md4;
 pub mod mt19937;
+pub mod primes;
+pub mod rsa;
 pub mod sha1;
 pub mod srp;
 
