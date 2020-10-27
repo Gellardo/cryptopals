@@ -15,6 +15,7 @@ fn one() -> BigUint {
 }
 
 pub fn genprime(n: u64) -> BigUint {
+    assert!(n >= 12, "must generate primes with more than 11 bits because all primes to that point are part of primality check");
     loop {
         let mut candidate: BigUint = gen_random(n);
         candidate.bitor_assign(one());

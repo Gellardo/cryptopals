@@ -5,7 +5,7 @@
 use cyptopals::rsa;
 
 fn main() {
-    rsa::generate_key();
+    rsa::generate_key(24).expect("Did not find a keypair");
 }
 
 #[cfg(test)]
