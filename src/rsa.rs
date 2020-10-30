@@ -2,6 +2,7 @@ use num_bigint::{BigInt, BigUint};
 use num_integer::Integer;
 
 use crate::primes::genprime;
+use std::ops::Rem;
 
 pub struct PrivateKey {
     n: BigUint,
@@ -65,7 +66,7 @@ pub fn generate_key(size: u64) -> Option<(PrivateKey, PublicKey)> {
 }
 
 impl PublicKey {
-    pub fn encrypt(self, inp: &Vec<u8>) -> Vec<u8> {
+    pub fn encrypt(&self, inp: &Vec<u8>) -> Vec<u8> {
         let exp = v2u(inp);
         assert!(exp < self.n, "input has to be smaller than modulus");
         let cipher = exp.modpow(&self.e, &self.n);
@@ -74,12 +75,34 @@ impl PublicKey {
 }
 
 impl PrivateKey {
-    pub fn decrypt(self, inp: &Vec<u8>) -> Vec<u8> {
+    pub fn decrypt(&self, inp: &Vec<u8>) -> Vec<u8> {
         let exp = v2u(inp);
         assert!(exp < self.n, "input has to be smaller than modulus");
         let plain = exp.modpow(&self.d, &self.n);
         u2v(&plain)
     }
+}
+
+/// s5c40: Given a set of ciphertext and public key pairs of the same unpadded plaintext, get plaintext
+///
+/// Requires:
+/// - e == 3
+/// - at least 3 such pairs
+pub fn decrypt_e3_unpadded_broadcast(stuff: Vec<(Vec<u8>, PublicKey)>) -> Vec<u8> {
+    assert!(stuff.len() >= 3);
+    let c_0 = v2u(&stuff[0].0);
+    let c_1 = v2u(&stuff[1].0);
+    let c_2 = v2u(&stuff[2].0);
+    let ms0 = &stuff[1].1.n * &stuff[2].1.n;
+    let ms1 = &stuff[0].1.n * &stuff[2].1.n;
+    let ms2 = &stuff[0].1.n * &stuff[1].1.n;
+    let im0 = invmod(&ms0, &stuff[0].1.n);
+    let im1 = invmod(&ms1, &stuff[1].1.n);
+    let im2 = invmod(&ms2, &stuff[2].1.n);
+    let result = c_0 * ms0 * im0 + c_1 * ms1 * im1 + c_2 * ms2 * im2;
+    // c_4 = p^3 mod (n_0*n_1*n_2)
+    let result = result.rem(&stuff[0].1.n * &stuff[1].1.n * &stuff[2].1.n);
+    u2v(&result.nth_root(3))
 }
 
 #[cfg(test)]
