@@ -5,7 +5,10 @@
 use cyptopals::rsa;
 
 fn main() {
-    rsa::generate_key(24).expect("Did not find a keypair");
+    let (priv_key, pub_key) = rsa::generate_key(24).expect("Did not find a keypair");
+    let plain = b"as";
+    let cipher = pub_key.encrypt(&plain.to_vec());
+    assert_eq!(priv_key.decrypt(&cipher), plain);
 }
 
 #[cfg(test)]
